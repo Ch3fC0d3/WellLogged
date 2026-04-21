@@ -9,3 +9,5 @@ uploads/
 !package.json
 !package-lock.json
 gcs-key.json
+gcs-key.b64
+*.b64
