@@ -1,1 +1,5 @@
-node_modules\n.env\ndatabase.sqlite\n.DS_Store\nuploads/
+node_modules/
+.env
+database.sqlite
+.DS_Store
+uploads/
