@@ -18,6 +18,10 @@ if (BUCKET_NAME) {
                 ? GCS_KEY_JSON
                 : Buffer.from(GCS_KEY_JSON, 'base64').toString('utf-8');
             opts.credentials = JSON.parse(raw);
+            if (opts.credentials.private_key) {
+                // Ensure escaped newlines are converted to actual newlines
+                opts.credentials.private_key = opts.credentials.private_key.replace(/\\n/g, '\n');
+            }
         } else if (GCS_KEY_FILE) {
             opts.keyFilename = GCS_KEY_FILE;
         }
@@ -63,6 +67,7 @@ async function getDownloadUrl(key) {
     if (!key) return null;
     if (bucket && key.startsWith('logs/')) {
         const [signed] = await bucket.file(key).getSignedUrl({
+            version: 'v4', // Force v4 signing instead of deprecated v2
             action: 'read',
             expires: Date.now() + 60 * 60 * 1000 // 1 hour
         });
