@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../db');
+const storage = require('../storage');
 const router = express.Router();
 
 const requireAuth = (req, res, next) => {
@@ -10,16 +11,18 @@ const requireAuth = (req, res, next) => {
     next();
 };
 
-// Setup Multer for file storage
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/')
-    },
+// Ensure uploads directory exists for multer temp/local storage
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+// Setup Multer for temp file reception
+const multerStorage = multer.diskStorage({
+    destination: function (req, file, cb) { cb(null, uploadsDir) },
     filename: function (req, file, cb) {
         cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname))
     }
 })
-const upload = multer({ storage: storage });
+const upload = multer({ storage: multerStorage, limits: { fileSize: 100 * 1024 * 1024 } });
 
 // Get all logs for the logged-in user
 router.get('/', requireAuth, (req, res) => {
@@ -29,37 +32,63 @@ router.get('/', requireAuth, (req, res) => {
     });
 });
 
-// Get a specific log for the logged-in user
-router.get('/:id', requireAuth, (req, res) => {
+// Get a specific log for the logged-in user (with signed download URL)
+router.get('/:id', requireAuth, async (req, res) => {
     const logId = req.params.id;
-    db.get(`SELECT * FROM logs WHERE id = ? AND user_id = ?`, [logId, req.session.userId], (err, log) => {
+    db.get(`SELECT * FROM logs WHERE id = ? AND user_id = ?`, [logId, req.session.userId], async (err, log) => {
         if (err) return res.status(500).json({ error: 'Database error' });
         if (!log) return res.status(404).json({ error: 'Log not found' });
+        // Generate fresh signed URL if using cloud storage
+        if (log.source_file_key) {
+            try { log.download_url = await storage.getDownloadUrl(log.source_file_key); }
+            catch (e) { log.download_url = log.source_file_url; }
+        } else {
+            log.download_url = log.source_file_url;
+        }
         res.json({ log });
     });
 });
 
 // Create a new log with file upload
-router.post('/', requireAuth, upload.single('file'), (req, res) => {
-    const { title, well_name, api_number, footage, notes } = req.body;
-    
+router.post('/', requireAuth, upload.single('file'), async (req, res) => {
+    const { title, well_name, api_number, footage, notes, num_logs, curves } = req.body;
+
     if (!title) {
-        // If they failed validation but uploaded a file, we should remove it
-        if (req.file) fs.unlinkSync(req.file.path);
+        if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
         return res.status(400).json({ error: 'Title/Project Name is required' });
     }
-    
+
     if (!req.file) {
         return res.status(400).json({ error: 'Source file is required (Image or TIFF)' });
     }
 
-    const source_file_url = '/uploads/' + req.file.filename;
+    let uploadResult;
+    try {
+        uploadResult = await storage.uploadFile(req.file);
+    } catch (err) {
+        console.error('Upload failed:', err);
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+        return res.status(500).json({ error: 'File upload failed. Please try again.' });
+    }
 
-    db.run(`INSERT INTO logs (user_id, title, well_name, api_number, footage, notes, source_file_url) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [req.session.userId, title, well_name, api_number, footage || 0, notes || '', source_file_url],
+    db.run(
+        `INSERT INTO logs (user_id, title, well_name, api_number, footage, num_logs, curves, notes, source_file_url, source_file_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            req.session.userId,
+            title,
+            well_name || null,
+            api_number || null,
+            parseInt(footage) || 0,
+            parseInt(num_logs) || 1,
+            parseInt(curves) || 1,
+            notes || '',
+            uploadResult.url,
+            uploadResult.key
+        ],
         function (err) {
             if (err) {
-                if (req.file) fs.unlinkSync(req.file.path);
+                console.error('DB insert failed:', err);
                 return res.status(500).json({ error: 'Failed to create log' });
             }
             res.status(201).json({ message: 'Log created', log: { id: this.lastID, title, status: 'uploaded' } });

@@ -36,8 +36,11 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     well_name TEXT,
                     api_number TEXT,
                     footage INTEGER,
+                    num_logs INTEGER DEFAULT 1,
+                    curves INTEGER DEFAULT 1,
                     status TEXT DEFAULT 'uploaded',
                     source_file_url TEXT,
+                    source_file_key TEXT,
                     output_file_url TEXT,
                     notes TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -45,6 +48,11 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             `);
+
+            // Safe migrations for pre-existing databases (ignore errors if column exists)
+            db.run(`ALTER TABLE logs ADD COLUMN num_logs INTEGER DEFAULT 1`, () => {});
+            db.run(`ALTER TABLE logs ADD COLUMN curves INTEGER DEFAULT 1`, () => {});
+            db.run(`ALTER TABLE logs ADD COLUMN source_file_key TEXT`, () => {});
 
             // Invoices table
             db.run(`
