@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request a Quote & Get Started | Well Logged</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .quote-container { max-width: 800px; margin: 60px auto; padding: 40px; background: #fff; border-radius: 12px; box-shadow: var(--shadow); }
+        .quote-header { text-align: center; margin-bottom: 40px; }
+        .quote-header h1 { font-size: 36px; margin-bottom: 12px; color: var(--ink); }
+        .quote-header p { color: var(--muted); font-size: 18px; max-width: 600px; margin: 0 auto; }
+        
+        .section-title { font-size: 20px; border-bottom: 2px solid var(--surface); padding-bottom: 10px; margin: 40px 0 20px; font-weight: 800; color: var(--ink); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; color: var(--ink); }
+        .form-input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 16px; box-sizing: border-box; background: #fafafa; }
+        .form-input:focus { outline: none; border-color: var(--teal); background: #fff; box-shadow: 0 0 0 3px rgba(13, 118, 110, 0.1); }
+        
+        .upload-dropzone { border: 2px dashed var(--line); border-radius: 8px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa; position: relative; }
+        .upload-dropzone:hover, .upload-dropzone.dragover { border-color: var(--teal); background: rgba(13, 118, 110, 0.02); }
+        .hidden-file-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .dropzone-icon { width: 48px; height: 48px; margin: 0 auto 16px; color: var(--teal); }
+        .file-name-display { margin-top: 12px; font-weight: 600; color: var(--teal); word-break: break-all; }
+        
+        .btn-submit { width: 100%; padding: 16px; font-size: 18px; font-weight: 700; background: var(--teal); color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: background 0.2s; margin-top: 20px; }
+        .btn-submit:hover { background: #0f5e56; }
+        .auth-error { color: #ef4444; font-weight: 600; text-align: center; margin-top: 16px; }
+        
+        .estimate-panel { background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%); color: #fff; padding: 24px; border-radius: 10px; margin: 30px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    </style>
+</head>
+<body style="background: var(--surface-soft);">
+    <header class="site-header" style="position: relative; transform: none; left: 0; min-height: 60px; padding: 20px; background: var(--ink);">
+        <a class="brand" href="/" aria-label="Well Logged home">
+            <img src="/assets/logo.svg" alt="Well Logged AI Logo" class="brand-logo" style="height: 40px;" />
+        </a>
+        <nav class="nav-links">
+            <a href="/login.html" class="nav-link" style="color: #fff;">Already have an account? Log In</a>
+        </nav>
+    </header>
+
+    <main class="quote-container">
+        <div class="quote-header">
+            <h1>Start Your Project</h1>
+            <p>Create an account and submit your logs for a full-service digitization quote. We handle the entire process from image to clean digital output.</p>
+        </div>
+
+        <form id="quoteForm">
+            <!-- Account Info -->
+            <h2 class="section-title">1. Create Your Account</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" id="name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address *</label>
+                    <input type="email" id="email" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Company Name</label>
+                    <input type="text" id="company" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password *</label>
+                    <input type="password" id="password" class="form-input" required minlength="8" placeholder="At least 8 characters">
+                </div>
+            </div>
+
+            <!-- Project Info -->
+            <h2 class="section-title">2. Project Details</h2>
+            <div class="form-group">
+                <label class="form-label">Project Name *</label>
+                <input type="text" id="title" class="form-input" required placeholder="e.g. Permian Basin Digitization Batch 1">
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Well Name</label>
+                    <input type="text" id="well_name" class="form-input" placeholder="Optional">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Number</label>
+                    <input type="text" id="api_number" class="form-input" placeholder="Optional">
+                </div>
+            </div>
+
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top: 10px;">
+                <div class="form-group">
+                    <label class="form-label">Number of Logs</label>
+                    <input type="number" id="num_logs" class="form-input" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Avg Feet / Log</label>
+                    <input type="number" id="footage" class="form-input" value="5000" min="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Curves / Log</label>
+                    <input type="number" id="curves" class="form-input" value="1" min="1">
+                </div>
+            </div>
+
+            <!-- Live Estimate -->
+            <div class="estimate-panel">
+                <div>
+                    <div style="font-size: 11px; font-weight: 900; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.7);">Project Estimate</div>
+                    <div id="estimateTotal" style="font-size: 36px; font-weight: 900; line-height: 1.1; margin-top: 4px;">$34.50</div>
+                </div>
+                <div style="text-align: right; font-size: 14px; color: rgba(255,255,255,0.85);">
+                    <div><strong id="estimateCurveFeet">5,000 ft</strong> of curve footage</div>
+                    <div id="estimateRate" style="opacity: 0.8;">$0.69 / curve / 100 ft</div>
+                </div>
+            </div>
+
+            <!-- File Upload -->
+            <h2 class="section-title">3. Upload File</h2>
+            <div class="form-group">
+                <div class="upload-dropzone" id="dropzone">
+                    <input type="file" id="file" required accept="image/*,.tiff,.tif,.pdf" class="hidden-file-input">
+                    <svg class="dropzone-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p style="margin: 0 0 8px 0; font-size: 18px; color: var(--ink);"><strong>Click to browse</strong> or drag and drop here</p>
+                    <p style="margin: 0; color: var(--muted); font-size: 14px;">Supported: TIFF, PDF, PNG, JPG (max 100MB)</p>
+                    <p id="fileNameDisplay" class="file-name-display"></p>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label class="form-label">Additional Notes</label>
+                <textarea id="notes" rows="3" class="form-input" style="resize: vertical;" placeholder="Any specific instructions?"></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">Create Account & Submit Project</button>
+            <div id="errorMsg" class="auth-error"></div>
+        </form>
+    </main>
+
+    <script>
+        // Live Estimate Calculator
+        function updateEstimate() {
+            const numLogs = Math.max(1, parseInt(document.getElementById('num_logs').value) || 1);
+            const feetPerLog = Math.max(0, parseInt(document.getElementById('footage').value) || 0);
+            const curves = Math.max(1, parseInt(document.getElementById('curves').value) || 1);
+
+            let rate, rateLabel, totalStr;
+            const totalCurveFeet = numLogs * feetPerLog * curves;
+
+            if (numLogs > 20) {
+                rate = null;
+                rateLabel = 'Large archive — email for pricing';
+                totalStr = 'Custom Quote';
+            } else if (numLogs >= 2) {
+                rate = 0.49;
+                rateLabel = '$0.49 / curve / 100 ft';
+            } else {
+                rate = 0.69;
+                rateLabel = '$0.69 / curve / 100 ft';
+            }
+
+            if (rate !== null) {
+                const billableUnits = Math.ceil(feetPerLog / 100) * numLogs * curves;
+                let total = billableUnits * rate;
+                if (numLogs === 1 && total < 29.99) total = 29.99;
+                totalStr = '$' + total.toFixed(2);
+            }
+
+            document.getElementById('estimateTotal').textContent = totalStr;
+            document.getElementById('estimateCurveFeet').textContent = totalCurveFeet.toLocaleString() + ' ft';
+            document.getElementById('estimateRate').textContent = rateLabel;
+        }
+
+        ['num_logs', 'footage', 'curves'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateEstimate);
+        });
+        updateEstimate();
+
+        // Dropzone
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                fileNameDisplay.textContent = 'Selected: ' + fileInput.files[0].name;
+                dropzone.style.borderColor = 'var(--teal)';
+            } else {
+                fileNameDisplay.textContent = '';
+                dropzone.style.borderColor = '';
+            }
+        });
+
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => { dropzone.classList.remove('dragover'); });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                fileNameDisplay.textContent = 'Selected: ' + fileInput.files[0].name;
+                dropzone.style.borderColor = 'var(--teal)';
+            }
+        });
+
+        // Submit form
+        document.getElementById('quoteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            
+            errorMsg.textContent = '';
+            btn.disabled = true;
+            btn.textContent = 'Uploading and creating account...';
+
+            const formData = new FormData();
+            formData.append('name', document.getElementById('name').value);
+            formData.append('email', document.getElementById('email').value);
+            formData.append('company', document.getElementById('company').value);
+            formData.append('password', document.getElementById('password').value);
+            formData.append('title', document.getElementById('title').value);
+            formData.append('well_name', document.getElementById('well_name').value);
+            formData.append('api_number', document.getElementById('api_number').value);
+            formData.append('num_logs', document.getElementById('num_logs').value);
+            formData.append('footage', document.getElementById('footage').value);
+            formData.append('curves', document.getElementById('curves').value);
+            formData.append('notes', document.getElementById('notes').value);
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const res = await fetch('/api/logs/public', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    window.location.href = data.redirect || '/dashboard';
+                } else {
+                    const data = await res.json();
+                    errorMsg.textContent = data.error || 'Submission failed.';
+                    btn.disabled = false;
+                    btn.textContent = 'Create Account & Submit Project';
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Network error. Please try again.';
+                btn.disabled = false;
+                btn.textContent = 'Create Account & Submit Project';
+            }
+        });
+    </script>
+</body>
+</html>

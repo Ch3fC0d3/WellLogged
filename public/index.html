@@ -63,13 +63,13 @@
             </p>
 
             <div class="hero-actions" aria-label="Primary calls to action">
-              <a class="button button-primary" href="#contact">
+              <a class="button button-primary" href="/quote.html">
                 Get Started
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M5 12h14M13 5l7 7-7 7" />
                 </svg>
               </a>
-              <a class="button button-secondary" href="#pricing">Request a Quote</a>
+              <a class="button button-secondary" href="/quote.html">Request a Quote</a>
             </div>
 
             <ul class="hero-points" aria-label="Service highlights">
@@ -179,11 +179,8 @@
               We handle the entire process from image to clean digital output. Straightforward
               pricing for teams that want a hands-off solution.
             </p>
-            <a class="button button-primary" href="#contact">
+            <a href="/quote.html" class="button button-outline" style="margin-top: 24px">
               Get a Quote
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12h14M13 5l7 7-7 7" />
-              </svg>
             </a>
           </div>
 
@@ -311,19 +308,32 @@
               </div>
             </div>
 
-            <p class="calculator-note">
-              Single and small batch estimates are calculated per curve per 100 feet, rounded up to the next 100-foot interval. A $29.99 minimum applies to one-well projects. Large archives are quoted by email.
+            <p class="calc-terms">
+              Single and small batch estimates are calculated per curve per 100 feet, rounded up to
+              the next 100-foot interval. A $29.99 minimum applies to one-well projects. Large
+              archives are quoted by email.
             </p>
 
             <a
-              class="button button-primary calculator-cta"
-              href="mailto:hello@welllogged.ai?subject=Well%20log%20digitization%20estimate"
-              data-calc-mailto
+              id="calcSendBtn"
+              href="/quote.html"
+              class="button button-primary"
+              style="margin-top: 16px"
             >
-              Send Estimate
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 4h16v16H4z" />
-                <path d="m22 6-10 7L2 6" />
+              Start Project
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M5 12h14M13 5l7 7-7 7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
             </a>
           </form>
@@ -381,23 +391,14 @@
         <div class="section-inner final-inner reveal">
           <p class="section-kicker">Ready to digitize your well logs?</p>
           <h2 id="contact-title">Send us your records and let us handle the rest.</h2>
-          <div class="final-actions">
-            <a
-              class="button button-primary"
-              href="mailto:hello@welllogged.ai?subject=Well%20log%20digitization%20project"
-            >
+          <div class="cta-actions">
+            <a class="button button-primary" href="/quote.html">
               Start Your Project
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 4h16v16H4z" />
-                <path d="m22 6-10 7L2 6" />
+                <path d="M5 12h14M13 5l7 7-7 7" />
               </svg>
             </a>
-            <a
-              class="button button-secondary"
-              href="mailto:hello@welllogged.ai?subject=Well%20Logged%20contact"
-            >
-              Contact Us
-            </a>
+            <a class="button button-secondary" href="mailto:hello@welllogged.ai?subject=Well%20Logged%20contact">Contact Us</a>
           </div>
         </div>
       </section>

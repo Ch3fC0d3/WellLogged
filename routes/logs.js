@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 const db = require('../db');
 const storage = require('../storage');
 const router = express.Router();
@@ -23,6 +24,86 @@ const multerStorage = multer.diskStorage({
     }
 })
 const upload = multer({ storage: multerStorage, limits: { fileSize: 100 * 1024 * 1024 } });
+
+// --- PUBLIC ROUTE: Account creation + Quote Submission ---
+router.post('/public', upload.single('file'), async (req, res) => {
+    const { name, email, password, company, title, well_name, api_number, footage, num_logs, curves, notes } = req.body;
+
+    if (!name || !email || !password || !title) {
+        if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
+        return res.status(400).json({ error: 'Name, email, password, and project title are required.' });
+    }
+
+    if (!req.file) {
+        return res.status(400).json({ error: 'Source file is required.' });
+    }
+
+    // 1. Check if email already exists
+    db.get('SELECT id FROM users WHERE email = ?', [email], async (err, row) => {
+        if (err) {
+            if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
+            return res.status(500).json({ error: 'Database error.' });
+        }
+        if (row) {
+            if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
+            return res.status(400).json({ error: 'An account with this email already exists. Please log in first.' });
+        }
+
+        // 2. Upload file to GCS
+        let uploadResult;
+        try {
+            uploadResult = await storage.uploadFile(req.file);
+        } catch (err) {
+            console.error('Upload failed:', err);
+            if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
+            return res.status(500).json({ error: 'File upload failed. Please try again.' });
+        }
+
+        // 3. Create user
+        const hash = await bcrypt.hash(password, 10);
+        db.run(
+            `INSERT INTO users (name, email, password_hash, company) VALUES (?, ?, ?, ?)`,
+            [name, email, hash, company || null],
+            function (err) {
+                if (err) {
+                    console.error('User insert failed:', err);
+                    return res.status(500).json({ error: 'Failed to create user account.' });
+                }
+                
+                const userId = this.lastID;
+
+                // 4. Create log project
+                db.run(
+                    `INSERT INTO logs (user_id, title, well_name, api_number, footage, num_logs, curves, notes, source_file_url, source_file_key)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        userId,
+                        title,
+                        well_name || null,
+                        api_number || null,
+                        parseInt(footage) || 0,
+                        parseInt(num_logs) || 1,
+                        parseInt(curves) || 1,
+                        notes || '',
+                        uploadResult.url,
+                        uploadResult.key
+                    ],
+                    function (err) {
+                        if (err) {
+                            console.error('Log insert failed:', err);
+                            return res.status(500).json({ error: 'Account created, but failed to create log project.' });
+                        }
+                        
+                        // 5. Automatically log the user in
+                        req.session.userId = userId;
+                        res.status(201).json({ message: 'Project submitted successfully!', redirect: '/dashboard' });
+                    }
+                );
+            }
+        );
+    });
+});
+// ---------------------------------------------------------
 
 // Get all logs for the logged-in user
 router.get('/', requireAuth, (req, res) => {
