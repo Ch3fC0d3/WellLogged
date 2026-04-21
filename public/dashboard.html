@@ -85,8 +85,7 @@
         <aside class="dash-sidebar">
             <a href="/dashboard" id="nav-dashboard">Dashboard</a>
             <a href="/dashboard/logs" id="nav-logs">My Logs</a>
-            <a href="/dashboard/billing" id="nav-billing">Billing</a>
-            <a href="/dashboard/account" id="nav-account">Account</a>
+            <a href="/dashboard/account" id="nav-account">Account & Billing</a>
             <a href="/dashboard/admin" id="nav-admin" class="hidden" style="margin-top: 30px; background: rgba(15, 118, 110, 0.05); border: 1px dashed var(--teal);">Admin Panel</a>
         </aside>
 
@@ -256,44 +255,71 @@
                 </div>
             </div>
 
-            <!-- Billing View -->
-            <div id="billingView" class="hidden">
-                <h1>Billing & Subscription</h1>
-                <div class="card-grid">
-                    <div class="stat-card">
-                        <h3>Current Plan</h3>
-                        <p id="billingPlanName">Loading...</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Status</h3>
-                        <p id="billingStatus">Loading...</p>
-                    </div>
-                </div>
-                <div class="billing-section">
-                    <button id="manageBillingBtn" class="btn">Manage Billing</button>
-                    <p style="color: var(--muted); font-size: 14px; margin-top: 10px;">
-                        Manage your payment methods, subscriptions, and download invoices through our secure Stripe portal.
-                    </p>
-                </div>
-                <div class="billing-section">
-                    <h3>Recent Invoices</h3>
-                    <ul class="invoice-list" id="invoiceList">
-                        <li>Loading...</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Account View -->
+            <!-- Account & Billing View -->
             <div id="accountView" class="hidden">
-                <h1>Account Settings</h1>
-                <div style="max-width: 500px;">
-                    <p><strong>Name:</strong> <span id="accountName"></span></p>
-                    <p><strong>Email:</strong> <span id="accountEmail"></span></p>
-                    <p><strong>Company:</strong> <span id="accountCompany"></span></p>
-                    <p><strong>Address:</strong> <span id="accountAddress"></span></p>
-                    <p><strong>Role:</strong> <span id="accountRole"></span></p>
-                    <br><br>
-                    <button class="btn btn-outline" id="passwordResetBtn">Reset Password</button>
+                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 40px;">
+                    
+                    <!-- Profile Form -->
+                    <div style="flex: 1; min-width: 320px; max-width: 500px;">
+                        <h1>Account Settings</h1>
+                        <form id="accountForm" style="background: #fff; padding: 24px; border-radius: 8px; border: 1px solid var(--line);">
+                            <div class="form-group">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" id="accountName" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" id="accountEmail" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Company (optional)</label>
+                                <input type="text" id="accountCompany" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Address (optional)</label>
+                                <input type="text" id="accountAddress" class="form-input">
+                            </div>
+                            <div class="form-group" style="margin-top: 30px;">
+                                <label class="form-label">Change Password (leave blank to keep current)</label>
+                                <input type="password" id="accountPassword" class="form-input" placeholder="New password">
+                            </div>
+                            
+                            <button type="submit" id="saveAccountBtn" class="btn" style="width: 100%;">Save Changes</button>
+                            <div id="accountErrorMsg" style="color: #ef4444; font-weight: 500; margin-top: 12px; text-align: center;"></div>
+                            <div id="accountSuccessMsg" style="color: var(--teal); font-weight: 500; margin-top: 12px; text-align: center;"></div>
+                        </form>
+                    </div>
+
+                    <!-- Billing Panel -->
+                    <div style="flex: 1; min-width: 320px; max-width: 500px;">
+                        <h1>Billing & Subscription</h1>
+                        <div style="background: #fff; padding: 24px; border-radius: 8px; border: 1px solid var(--line);">
+                            <div class="card-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 24px;">
+                                <div class="stat-card" style="padding: 16px;">
+                                    <h3 style="font-size: 13px; margin-bottom: 8px;">Current Plan</h3>
+                                    <p id="billingPlanName" style="font-size: 18px; margin:0; font-weight: bold;">Loading...</p>
+                                </div>
+                                <div class="stat-card" style="padding: 16px;">
+                                    <h3 style="font-size: 13px; margin-bottom: 8px;">Status</h3>
+                                    <p id="billingStatus" style="font-size: 18px; margin:0; font-weight: bold;">Loading...</p>
+                                </div>
+                            </div>
+                            
+                            <div class="billing-section" style="margin-bottom: 24px;">
+                                <button id="manageBillingBtn" class="btn btn-outline" style="width: 100%;">Manage Payment Methods</button>
+                                <p style="color: var(--muted); font-size: 13px; margin-top: 12px;">
+                                    Manage your payment methods, subscriptions, and download invoices through our secure Stripe portal.
+                                </p>
+                            </div>
+                            
+                            <div class="billing-section">
+                                <h3 style="font-size: 15px; margin-top: 0;">Recent Invoices</h3>
+                                <ul class="invoice-list" id="invoiceList" style="margin:0;">
+                                    <li>Loading...</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -353,10 +379,10 @@
                 document.getElementById('userNameHeader').textContent = currentUser.name || currentUser.email;
                 
                 // Account setup
-                document.getElementById('accountName').textContent = currentUser.name || 'N/A';
-                document.getElementById('accountEmail').textContent = currentUser.email;
-                document.getElementById('accountCompany').textContent = currentUser.company || 'N/A';
-                document.getElementById('accountAddress').textContent = currentUser.address || 'N/A';
+                document.getElementById('accountName').value = currentUser.name || '';
+                document.getElementById('accountEmail').value = currentUser.email || '';
+                document.getElementById('accountCompany').value = currentUser.company || '';
+                document.getElementById('accountAddress').value = currentUser.address || '';
                 document.getElementById('accountRole').textContent = currentUser.role;
 
                 if (currentUser.role === 'admin') {
@@ -397,13 +423,10 @@
                 document.getElementById('logDetailView').classList.remove('hidden');
                 const logId = path.split('/').pop();
                 await loadLogDetail(logId);
-            } else if (path === '/dashboard/billing') {
-                document.getElementById('nav-billing').classList.add('active');
-                document.getElementById('billingView').classList.remove('hidden');
-                await loadBillingData();
-            } else if (path === '/dashboard/account') {
+            } else if (path === '/dashboard/billing' || path === '/dashboard/account') {
                 document.getElementById('nav-account').classList.add('active');
                 document.getElementById('accountView').classList.remove('hidden');
+                await loadBillingData();
             } else if (path === '/dashboard/admin') {
                 if (currentUser.role !== 'admin') {
                     window.history.pushState({}, '', '/dashboard');
@@ -763,6 +786,56 @@
             } finally {
                 btn.textContent = 'Submit Log';
                 btn.disabled = false;
+            }
+        });
+
+        // Account Form submission
+        document.getElementById('accountForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveAccountBtn');
+            const errorMsg = document.getElementById('accountErrorMsg');
+            const successMsg = document.getElementById('accountSuccessMsg');
+            
+            errorMsg.textContent = '';
+            successMsg.textContent = '';
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            const payload = {
+                name: document.getElementById('accountName').value,
+                email: document.getElementById('accountEmail').value,
+                company: document.getElementById('accountCompany').value,
+                address: document.getElementById('accountAddress').value,
+            };
+            
+            const pwd = document.getElementById('accountPassword').value;
+            if (pwd) payload.password = pwd;
+
+            try {
+                const res = await fetch('/api/auth/me', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    successMsg.textContent = 'Profile updated successfully!';
+                    document.getElementById('accountPassword').value = '';
+                    // Update current user cache
+                    currentUser.name = payload.name;
+                    currentUser.email = payload.email;
+                    currentUser.company = payload.company;
+                    currentUser.address = payload.address;
+                    document.getElementById('userNameHeader').textContent = currentUser.name || currentUser.email;
+                } else {
+                    const data = await res.json();
+                    errorMsg.textContent = data.error || 'Failed to update profile';
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Network error. Please try again.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Changes';
             }
         });
 

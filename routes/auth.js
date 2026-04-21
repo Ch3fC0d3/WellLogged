@@ -92,4 +92,37 @@ router.get('/me', (req, res) => {
     });
 });
 
+router.put('/me', async (req, res) => {
+    if (!req.session.userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const { name, email, company, address, password } = req.body;
+    
+    try {
+        let sql = `UPDATE users SET name = ?, email = ?, company = ?, address = ?`;
+        let params = [name, email, company || null, address || null];
+        
+        if (password) {
+            const hash = await bcrypt.hash(password, 10);
+            sql += `, password_hash = ?`;
+            params.push(hash);
+        }
+        
+        sql += ` WHERE id = ?`;
+        params.push(req.session.userId);
+        
+        db.run(sql, params, function(err) {
+            if (err) {
+                if (err.message.includes('UNIQUE constraint failed')) {
+                    return res.status(409).json({ error: 'Email already in use' });
+                }
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ message: 'Profile updated successfully' });
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router;
