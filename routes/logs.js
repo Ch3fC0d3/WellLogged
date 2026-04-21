@@ -95,7 +95,10 @@ router.post('/public', upload.single('file'), async (req, res) => {
 
         // 4. Ensure logged in and redirect
         req.session.userId = userId;
-        res.status(201).json({ message: 'Project submitted successfully!', redirect: '/dashboard' });
+        req.session.save((err) => {
+            if (err) console.error('Session save failed:', err);
+            res.status(201).json({ message: 'Project submitted successfully!', redirect: '/dashboard' });
+        });
 
     } catch (err) {
         console.error('Submission failed:', err);

@@ -47,7 +47,10 @@ router.post('/signup', async (req, res) => {
             req.session.email = email;
             req.session.role = 'customer';
             
-            res.status(201).json({ message: 'User created successfully', user: { id: this.lastID, email, name } });
+            req.session.save((err) => {
+                if (err) return res.status(500).json({ error: 'Session error' });
+                res.status(201).json({ message: 'User created successfully', user: { id: this.lastID, email, name } });
+            });
         });
     } catch (err) {
         console.error(err);
@@ -70,7 +73,10 @@ router.post('/login', (req, res) => {
         req.session.role = user.role;
         req.session.stripeCustomerId = user.stripe_customer_id;
         
-        res.json({ message: 'Logged in successfully', user: { id: user.id, name: user.name, email: user.email } });
+        req.session.save((err) => {
+            if (err) return res.status(500).json({ error: 'Session error' });
+            res.json({ message: 'Logged in successfully', user: { id: user.id, name: user.name, email: user.email } });
+        });
     });
 });
 

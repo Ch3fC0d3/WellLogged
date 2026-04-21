@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 const cors = require('cors');
 const path = require('path');
 const app = express();
@@ -23,14 +24,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // Session Configuration
-app.set('trust proxy', 1); // Trust first proxy (required for Railway/Heroku secure cookies)
+app.set('trust proxy', true); // Trust all proxies (required for Railway/Heroku secure cookies)
 app.use(session({
+    store: new SQLiteStore({ db: 'sessions.db', dir: '.' }),
     secret: process.env.SESSION_SECRET || 'secret_welllogged_key_123',
     resave: false,
     saveUninitialized: false,
     cookie: {
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 1000 * 60 * 60 * 24 // 1 day
+        sameSite: 'lax',
+        maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
     }
 }));
 

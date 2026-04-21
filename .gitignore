@@ -11,3 +11,4 @@ uploads/
 gcs-key.json
 gcs-key.b64
 *.b64
+sessions.db
