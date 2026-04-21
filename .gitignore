@@ -3,3 +3,9 @@ node_modules/
 database.sqlite
 .DS_Store
 uploads/
+
+# Google Cloud service account keys
+*.json
+!package.json
+!package-lock.json
+gcs-key.json
