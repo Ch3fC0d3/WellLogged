@@ -243,49 +243,47 @@
               </label>
             </div>
 
-            <div class="calculator-presets" aria-label="Project pricing tiers">
+            <div class="preset-cards">
               <button
                 type="button"
-                class="is-active"
-                aria-pressed="true"
-                data-preset-tier="Single"
-                data-preset-logs="1"
-                data-preset-feet="5000"
-                data-preset-curves="1"
-                data-preset-rate="0.69"
+                class="preset-card active"
+                data-preset="single"
+                data-logs="1"
+                data-feet="5000"
+                data-curves="1"
               >
-                <span class="preset-title">Single</span>
-                <span class="preset-definition">One individual well log.</span>
-                <span class="preset-size">1 log x 5,000 ft x 1 curve</span>
-                <span class="preset-rate">$0.69 / curve / 100 ft</span>
+                <span class="preset-name">Single</span>
+                <span class="preset-desc">One individual well log.</span>
+                <span class="preset-math">1 TO 5</span>
+                <span class="preset-price">$0.69 / curve / 100 ft</span>
               </button>
+
               <button
                 type="button"
-                aria-pressed="false"
-                data-preset-tier="Small batch"
-                data-preset-logs="5"
-                data-preset-feet="4000"
-                data-preset-curves="2"
-                data-preset-rate="0.49"
+                class="preset-card"
+                data-preset="batch"
+                data-logs="5"
+                data-feet="4000"
+                data-curves="2"
               >
-                <span class="preset-title">Small batch</span>
-                <span class="preset-definition">A few wells or sample logs.</span>
-                <span class="preset-size">5 logs x 4,000 ft x 2 curves</span>
-                <span class="preset-rate">$0.49 / curve / 100 ft</span>
+                <span class="preset-name">Small batch</span>
+                <span class="preset-desc">A few wells or sample logs.</span>
+                <span class="preset-math">5 TO 20</span>
+                <span class="preset-price">$0.49 / curve / 100 ft</span>
               </button>
+
               <button
                 type="button"
-                aria-pressed="false"
-                data-preset-tier="Large archive"
-                data-preset-logs="75"
-                data-preset-feet="6500"
-                data-preset-curves="3"
-                data-preset-rate="custom"
+                class="preset-card"
+                data-preset="archive"
+                data-logs="75"
+                data-feet="6500"
+                data-curves="3"
               >
-                <span class="preset-title">Large archive</span>
-                <span class="preset-definition">Bulk legacy log collection.</span>
-                <span class="preset-size">75 logs x 6,500 ft x 3 curves</span>
-                <span class="preset-rate">Email for pricing</span>
+                <span class="preset-name">Large archive</span>
+                <span class="preset-desc">Bulk legacy log collection.</span>
+                <span class="preset-math">OUR SPECIALTY</span>
+                <span class="preset-price highlight">Email for pricing</span>
               </button>
             </div>
 
