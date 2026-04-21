@@ -17,6 +17,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     name TEXT,
                     email TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
+                    company TEXT,
+                    address TEXT,
                     role TEXT DEFAULT 'customer',
                     stripe_customer_id TEXT,
                     stripe_subscription_id TEXT,

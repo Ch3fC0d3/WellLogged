@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const logsRoutes = require('./routes/logs');
 const billingRoutes = require('./routes/billing');
 const stripeRoutes = require('./routes/stripe');
+const adminRoutes = require('./routes/admin');
 
 // Webhook route must be before body-parser because it needs raw body
 app.use('/api/stripe', stripeRoutes);
@@ -21,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // Session Configuration
+app.set('trust proxy', 1); // Trust first proxy (required for Railway/Heroku secure cookies)
 app.use(session({
     secret: process.env.SESSION_SECRET || 'secret_welllogged_key_123',
     resave: false,
@@ -35,9 +37,12 @@ app.use(session({
 app.use('/api/auth', authRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Serve static frontend files from 'public'
 app.use(express.static(path.join(__dirname, 'public')));
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Protect and serve dashboard routes
 app.use('/dashboard', (req, res) => {

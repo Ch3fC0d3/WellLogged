@@ -5,7 +5,7 @@ const db = require('../db');
 const router = express.Router();
 
 router.post('/signup', async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, company, address } = req.body;
     
     if (!email || !password) {
         return res.status(400).json({ error: 'Email and password are required' });
@@ -18,16 +18,23 @@ router.post('/signup', async (req, res) => {
         // Create Stripe Customer
         let stripeCustomerId = null;
         if (stripe) {
-            const customer = await stripe.customers.create({
+            const customerOptions = {
                 email,
-                name
-            });
+                name,
+                metadata: { company }
+            };
+            if (address) {
+                customerOptions.address = {
+                    line1: address,
+                };
+            }
+            const customer = await stripe.customers.create(customerOptions);
             stripeCustomerId = customer.id;
         }
 
         // Insert into DB
-        const sql = `INSERT INTO users (name, email, password_hash, stripe_customer_id) VALUES (?, ?, ?, ?)`;
-        db.run(sql, [name, email, password_hash, stripeCustomerId], function(err) {
+        const sql = `INSERT INTO users (name, email, password_hash, company, address, stripe_customer_id) VALUES (?, ?, ?, ?, ?, ?)`;
+        db.run(sql, [name, email, password_hash, company || null, address || null, stripeCustomerId], function(err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) {
                     return res.status(409).json({ error: 'Email already exists' });
@@ -79,7 +86,7 @@ router.get('/me', (req, res) => {
     if (!req.session.userId) {
         return res.status(401).json({ error: 'Not authenticated' });
     }
-    db.get(`SELECT id, name, email, role FROM users WHERE id = ?`, [req.session.userId], (err, user) => {
+    db.get(`SELECT id, name, email, company, address, role FROM users WHERE id = ?`, [req.session.userId], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'User not found' });
         res.json({ user });
     });

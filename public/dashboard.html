@@ -54,6 +54,20 @@
         .detail-info p { margin: 10px 0; font-size: 16px; }
         .detail-info strong { color: var(--muted); display: inline-block; width: 150px; }
 
+        /* Forms & Upload */
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--ink); font-size: 14px; }
+        .form-input, .form-textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--line); border-radius: 6px; font-size: 15px; font-family: inherit; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box; background: #fff; }
+        .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1); }
+        .upload-dropzone { border: 2px dashed rgba(15, 118, 110, 0.3); border-radius: 12px; padding: 40px 20px; text-align: center; background: rgba(15, 118, 110, 0.02); transition: all 0.2s ease; cursor: pointer; position: relative; }
+        .upload-dropzone:hover, .upload-dropzone.dragover { background: rgba(15, 118, 110, 0.06); border-color: var(--teal); }
+        .hidden-file-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .dropzone-icon { width: 48px; height: 48px; color: var(--teal); margin-bottom: 16px; opacity: 0.8; }
+        .text-sm { font-size: 13px; }
+        .text-muted { color: var(--muted); }
+        .file-name-display { margin-top: 16px; font-weight: 600; color: var(--teal); font-size: 14px; word-break: break-all; }
+
+
     </style>
 </head>
 <body>
@@ -73,6 +87,7 @@
             <a href="/dashboard/logs" id="nav-logs">My Logs</a>
             <a href="/dashboard/billing" id="nav-billing">Billing</a>
             <a href="/dashboard/account" id="nav-account">Account</a>
+            <a href="/dashboard/admin" id="nav-admin" class="hidden" style="margin-top: 30px; background: rgba(15, 118, 110, 0.05); border: 1px dashed var(--teal);">Admin Panel</a>
         </aside>
 
         <main class="dash-main">
@@ -137,6 +152,60 @@
                 </table>
             </div>
 
+            <!-- Upload Log View -->
+            <div id="uploadLogView" class="hidden">
+                <a href="/dashboard/logs" style="color: var(--teal); font-weight: 600; text-decoration: none; display:inline-flex; align-items: center; gap: 6px; margin-bottom:24px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Back to Logs
+                </a>
+                <h1 style="margin-top: 0;">Submit New Log</h1>
+                <p style="color: var(--muted); margin-bottom: 32px; font-size: 16px;">Upload your images or TIFF files for digitization. We'll start processing them right away.</p>
+
+                <form id="uploadLogForm" enctype="multipart/form-data" style="max-width: 640px; background: #fff; padding: 32px; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                    <div class="form-group">
+                        <label class="form-label">Project Name *</label>
+                        <input type="text" id="uploadTitle" name="title" required class="form-input" placeholder="e.g. Q3 Digitize Batch">
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom: 20px;">
+                        <div>
+                            <label class="form-label">Well Name</label>
+                            <input type="text" id="uploadWellName" name="well_name" class="form-input" placeholder="e.g. Permian Basin 1">
+                        </div>
+                        <div>
+                            <label class="form-label">API Number</label>
+                            <input type="text" id="uploadApiNumber" name="api_number" class="form-input" placeholder="10-digit API">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Estimated Footage</label>
+                        <input type="number" id="uploadFootage" name="footage" class="form-input" placeholder="e.g. 5000">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Log File (Image, TIFF, PDF) *</label>
+                        <div class="upload-dropzone" id="dropzone">
+                            <input type="file" id="uploadFile" name="file" accept="image/*,.tiff,.tif,.pdf" required class="hidden-file-input">
+                            <svg class="dropzone-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <p style="margin: 0 0 8px 0; font-size: 16px; color: var(--ink);"><strong>Click to upload</strong> or drag and drop</p>
+                            <p class="text-sm text-muted" style="margin: 0;">TIFF, PDF, PNG, JPG (max 50MB)</p>
+                            <p id="fileNameDisplay" class="file-name-display"></p>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 32px;">
+                        <label class="form-label">Additional Notes</label>
+                        <textarea id="uploadNotes" name="notes" rows="3" class="form-textarea" placeholder="Any specific instructions for this log..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn" id="uploadSubmitBtn" style="width: 100%; font-size: 16px; padding: 14px; border-radius: 8px;">Submit Log File</button>
+                    <div id="uploadErrorMsg" style="color:#ef4444; margin-top:16px; text-align:center; font-weight: 500;"></div>
+                </form>
+            </div>
+
             <!-- Log Detail View -->
             <div id="logDetailView" class="hidden">
                 <a href="/dashboard/logs" style="color: var(--teal); font-weight: bold; text-decoration: none; display:inline-block; margin-bottom:20px;">&larr; Back to Logs</a>
@@ -190,9 +259,49 @@
                 <div style="max-width: 500px;">
                     <p><strong>Name:</strong> <span id="accountName"></span></p>
                     <p><strong>Email:</strong> <span id="accountEmail"></span></p>
+                    <p><strong>Company:</strong> <span id="accountCompany"></span></p>
+                    <p><strong>Address:</strong> <span id="accountAddress"></span></p>
                     <p><strong>Role:</strong> <span id="accountRole"></span></p>
                     <br><br>
                     <button class="btn btn-outline" id="passwordResetBtn">Reset Password</button>
+                </div>
+            </div>
+
+            <!-- Admin View -->
+            <div id="adminView" class="hidden">
+                <h1>Admin Panel</h1>
+                
+                <h3 style="margin-top: 30px;">All Platform Users</h3>
+                <div style="overflow-x: auto;">
+                    <table class="logs-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Company</th>
+                                <th>Role</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminUsersTable"></tbody>
+                    </table>
+                </div>
+
+                <h3 style="margin-top: 40px;">All Platform Logs</h3>
+                <div style="overflow-x: auto;">
+                    <table class="logs-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User Email</th>
+                                <th>Project Name</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminLogsTable"></tbody>
+                    </table>
                 </div>
             </div>
         </main>
@@ -216,7 +325,13 @@
                 // Account setup
                 document.getElementById('accountName').textContent = currentUser.name || 'N/A';
                 document.getElementById('accountEmail').textContent = currentUser.email;
+                document.getElementById('accountCompany').textContent = currentUser.company || 'N/A';
+                document.getElementById('accountAddress').textContent = currentUser.address || 'N/A';
                 document.getElementById('accountRole').textContent = currentUser.role;
+
+                if (currentUser.role === 'admin') {
+                    document.getElementById('nav-admin').classList.remove('hidden');
+                }
 
                 navigate();
             } catch (err) {
@@ -243,6 +358,9 @@
                 document.getElementById('nav-logs').classList.add('active');
                 document.getElementById('logsView').classList.remove('hidden');
                 await loadLogsData();
+            } else if (path === '/dashboard/logs/new') {
+                document.getElementById('nav-logs').classList.add('active');
+                document.getElementById('uploadLogView').classList.remove('hidden');
             } else if (path.startsWith('/dashboard/logs/')) {
                 document.getElementById('nav-logs').classList.add('active');
                 document.getElementById('logDetailView').classList.remove('hidden');
@@ -255,6 +373,15 @@
             } else if (path === '/dashboard/account') {
                 document.getElementById('nav-account').classList.add('active');
                 document.getElementById('accountView').classList.remove('hidden');
+            } else if (path === '/dashboard/admin') {
+                if (currentUser.role !== 'admin') {
+                    window.history.pushState({}, '', '/dashboard');
+                    navigate();
+                    return;
+                }
+                document.getElementById('nav-admin').classList.add('active');
+                document.getElementById('adminView').classList.remove('hidden');
+                await loadAdminData();
             } else {
                 // Fallback
                 window.history.pushState({}, '', '/dashboard');
@@ -369,6 +496,73 @@
             }
         }
 
+        async function loadAdminData() {
+            try {
+                const [resUsers, resLogs] = await Promise.all([
+                    fetch('/api/admin/users'),
+                    fetch('/api/admin/logs')
+                ]);
+                
+                const { users } = await resUsers.json();
+                const { logs } = await resLogs.json();
+
+                const uBody = document.getElementById('adminUsersTable');
+                uBody.innerHTML = users.map(u => `
+                    <tr>
+                        <td>${u.id}</td>
+                        <td>${u.name || 'N/A'}</td>
+                        <td>${u.email}</td>
+                        <td>${u.company || '-'}</td>
+                        <td><span class="status-badge">${u.role}</span></td>
+                        <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+
+                const lBody = document.getElementById('adminLogsTable');
+                lBody.innerHTML = logs.map(l => `
+                    <tr>
+                        <td>${l.id}</td>
+                        <td>${l.user_email}</td>
+                        <td>${l.title}</td>
+                        <td>
+                            <select onchange="updateLogStatus(${l.id}, this.value)">
+                                <option value="uploaded" ${l.status === 'uploaded' ? 'selected' : ''}>Uploaded</option>
+                                <option value="in review" ${l.status === 'in review' ? 'selected' : ''}>In Review</option>
+                                <option value="digitizing" ${l.status === 'digitizing' ? 'selected' : ''}>Digitizing</option>
+                                <option value="completed" ${l.status === 'completed' ? 'selected' : ''}>Completed</option>
+                                <option value="delivered" ${l.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="btn btn-outline" style="padding: 4px 8px; font-size: 12px;" onclick="addOutputUrl(${l.id})">Output URL</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error('Failed to load admin data', err);
+            }
+        }
+
+        async function updateLogStatus(id, newStatus) {
+            await fetch(`/api/admin/logs/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+        }
+
+        async function addOutputUrl(id) {
+            const url = prompt("Enter the output deliverable URL for this log:");
+            if (url) {
+                await fetch(`/api/admin/logs/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ output_file_url: url, status: 'completed' })
+                });
+                loadAdminData();
+            }
+        }
+
         // Actions
         document.getElementById('logoutBtn').addEventListener('click', async (e) => {
             e.preventDefault();
@@ -391,16 +585,74 @@
         });
 
         document.getElementById('newLogBtn').addEventListener('click', async () => {
-            const title = prompt("Enter a name for this new log/project:");
-            if (title) {
+            window.history.pushState({}, '', '/dashboard/logs/new');
+            navigate();
+        });
+
+        // File dropzone interactivity
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('uploadFile');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                updateFileName();
+            }
+        });
+
+        fileInput.addEventListener('change', updateFileName);
+
+        function updateFileName() {
+            if (fileInput.files.length > 0) {
+                fileNameDisplay.textContent = `Selected: ${fileInput.files[0].name}`;
+            } else {
+                fileNameDisplay.textContent = '';
+            }
+        }
+
+        document.getElementById('uploadLogForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('uploadSubmitBtn');
+            const errorMsg = document.getElementById('uploadErrorMsg');
+            
+            btn.textContent = 'Uploading...';
+            btn.disabled = true;
+            errorMsg.textContent = '';
+
+            const formData = new FormData(e.target);
+
+            try {
                 const res = await fetch('/api/logs', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title })
+                    body: formData
                 });
+                
                 if (res.ok) {
-                    loadLogsData();
+                    e.target.reset();
+                    updateFileName();
+                    window.history.pushState({}, '', '/dashboard/logs');
+                    navigate();
+                } else {
+                    const data = await res.json();
+                    errorMsg.textContent = data.error || 'Upload failed.';
                 }
+            } catch (err) {
+                errorMsg.textContent = 'A network error occurred. Please try again.';
+            } finally {
+                btn.textContent = 'Submit Log';
+                btn.disabled = false;
             }
         });
 

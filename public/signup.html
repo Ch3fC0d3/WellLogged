@@ -27,6 +27,8 @@
         <form id="signupForm" class="auth-form">
             <input type="text" id="name" class="auth-input" placeholder="Full Name" required>
             <input type="email" id="email" class="auth-input" placeholder="Email Address" required>
+            <input type="text" id="company" class="auth-input" placeholder="Company Name (optional)">
+            <input type="text" id="address" class="auth-input" placeholder="Address (optional)">
             <input type="password" id="password" class="auth-input" placeholder="Password" required>
             <div id="errorMsg" class="auth-error"></div>
             <button type="submit" class="auth-btn">Sign Up</button>
@@ -41,6 +43,8 @@
             e.preventDefault();
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
+            const company = document.getElementById('company').value;
+            const address = document.getElementById('address').value;
             const password = document.getElementById('password').value;
             const errorMsg = document.getElementById('errorMsg');
             errorMsg.textContent = '';
@@ -49,7 +53,7 @@
                 const res = await fetch('/api/auth/signup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, password })
+                    body: JSON.stringify({ name, email, company, address, password })
                 });
 
                 if (res.ok) {
