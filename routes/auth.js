@@ -74,7 +74,11 @@ router.post('/login', (req, res) => {
         req.session.stripeCustomerId = user.stripe_customer_id;
         
         req.session.save((err) => {
-            if (err) return res.status(500).json({ error: 'Session error' });
+            if (err) {
+                console.error('[Login] Failed to save session:', err);
+                return res.status(500).json({ error: 'Session error' });
+            }
+            console.log(`[Login] Session saved. Session ID: ${req.sessionID}, User ID: ${req.session.userId}`);
             res.json({ message: 'Logged in successfully', user: { id: user.id, name: user.name, email: user.email } });
         });
     });

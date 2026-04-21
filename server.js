@@ -24,14 +24,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // Session Configuration
-app.set('trust proxy', true); // Trust all proxies (required for Railway/Heroku secure cookies)
+app.set('trust proxy', 1); // Trust first proxy
 app.use(session({
     store: new SQLiteStore({ db: 'sessions.db', dir: '.' }),
     secret: process.env.SESSION_SECRET || 'secret_welllogged_key_123',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
     }
@@ -50,6 +49,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Protect and serve dashboard routes
 app.use('/dashboard', (req, res) => {
+    console.log(`[Dashboard Route] Session ID: ${req.sessionID}, User ID: ${req.session.userId}`);
     if (!req.session.userId) {
         return res.redirect('/login.html');
     }
