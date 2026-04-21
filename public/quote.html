@@ -35,11 +35,11 @@
 </head>
 <body style="background: var(--surface-soft);">
     <header class="site-header" style="position: relative; transform: none; left: 0; min-height: 60px; padding: 20px; background: var(--ink);">
-        <a class="brand" href="/" aria-label="Well Logged home">
+        <a class="brand" href="/" aria-label="Well Logged home" style="text-decoration: none;">
             <img src="/assets/logo.svg" alt="Well Logged AI Logo" class="brand-logo" style="height: 40px;" />
         </a>
-        <nav class="nav-links">
-            <a href="/login.html" class="nav-link" style="color: #fff;">Already have an account? Log In</a>
+        <nav class="nav-links" id="quoteNav" style="display: flex; align-items: center; gap: 20px;">
+            <a href="/login.html" class="nav-link" id="loginLink" style="color: #fff;">Already have an account? Log In</a>
         </nav>
     </header>
 
@@ -56,25 +56,27 @@
 
         <form id="quoteForm">
             <!-- Account Info -->
-            <h2 class="section-title">1. Create Your Account</h2>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Full Name *</label>
-                    <input type="text" id="name" class="form-input" required>
+            <h2 class="section-title" id="accountSectionTitle">1. Create Your Account</h2>
+            <div id="accountFieldsContainer">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Full Name *</label>
+                        <input type="text" id="name" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email Address *</label>
+                        <input type="email" id="email" class="form-input" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Email Address *</label>
-                    <input type="email" id="email" class="form-input" required>
-                </div>
-            </div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Company Name</label>
-                    <input type="text" id="company" class="form-input">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Password *</label>
-                    <input type="password" id="password" class="form-input" required minlength="8" placeholder="At least 8 characters">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Company Name</label>
+                        <input type="text" id="company" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password *</label>
+                        <input type="password" id="password" class="form-input" required minlength="8" placeholder="At least 8 characters">
+                    </div>
                 </div>
             </div>
 
@@ -147,6 +149,39 @@
     </main>
 
     <script>
+        // Check if user is already logged in
+        let isLoggedIn = false;
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    isLoggedIn = true;
+                    // Hide account section
+                    document.getElementById('accountSectionTitle').style.display = 'none';
+                    document.getElementById('accountFieldsContainer').style.display = 'none';
+                    
+                    // Update header nav
+                    const nav = document.getElementById('quoteNav');
+                    nav.innerHTML = `
+                        <span style="color: rgba(255,255,255,0.7); font-size: 14px;">Logged in as <strong>${data.user.email}</strong></span>
+                        <a href="/dashboard" class="nav-link" style="color: #fff; background: var(--teal); padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600;">Dashboard</a>
+                    `;
+
+                    // Update submit button text
+                    document.getElementById('submitBtn').textContent = 'Submit Project';
+
+                    // Remove required attributes from hidden fields
+                    document.getElementById('name').required = false;
+                    document.getElementById('email').required = false;
+                    document.getElementById('password').required = false;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        checkAuth();
+
         // Live Estimate Calculator
         function updateEstimate() {
             const numLogs = Math.max(1, parseInt(document.getElementById('num_logs').value) || 1);

@@ -29,79 +29,79 @@ const upload = multer({ storage: multerStorage, limits: { fileSize: 100 * 1024 *
 router.post('/public', upload.single('file'), async (req, res) => {
     const { name, email, password, company, title, well_name, api_number, footage, num_logs, curves, notes } = req.body;
 
-    if (!name || !email || !password || !title) {
+    if (!title) {
         if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
-        return res.status(400).json({ error: 'Name, email, password, and project title are required.' });
+        return res.status(400).json({ error: 'Project title is required.' });
+    }
+
+    if (!req.session.userId && (!name || !email || !password)) {
+        if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
+        return res.status(400).json({ error: 'Name, email, and password are required for new accounts.' });
     }
 
     if (!req.file) {
         return res.status(400).json({ error: 'Source file is required.' });
     }
 
-    // 1. Check if email already exists
-    db.get('SELECT id FROM users WHERE email = ?', [email], async (err, row) => {
-        if (err) {
-            if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
-            return res.status(500).json({ error: 'Database error.' });
-        }
-        if (row) {
-            if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
-            return res.status(400).json({ error: 'An account with this email already exists. Please log in first.' });
+    try {
+        let userId = req.session.userId;
+        
+        // 1. If not logged in, handle user creation
+        if (!userId) {
+            // Check if email exists
+            const existingUser = await new Promise((resolve, reject) => {
+                db.get('SELECT id FROM users WHERE email = ?', [email], (err, row) => err ? reject(err) : resolve(row));
+            });
+            
+            if (existingUser) {
+                if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
+                return res.status(400).json({ error: 'An account with this email already exists. Please log in first.' });
+            }
+
+            // Create user
+            const hash = await bcrypt.hash(password, 10);
+            userId = await new Promise((resolve, reject) => {
+                db.run(
+                    `INSERT INTO users (name, email, password_hash, company) VALUES (?, ?, ?, ?)`,
+                    [name, email, hash, company || null],
+                    function (err) { err ? reject(err) : resolve(this.lastID); }
+                );
+            });
         }
 
         // 2. Upload file to GCS
-        let uploadResult;
-        try {
-            uploadResult = await storage.uploadFile(req.file);
-        } catch (err) {
-            console.error('Upload failed:', err);
-            if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
-            return res.status(500).json({ error: 'File upload failed. Please try again.' });
-        }
+        const uploadResult = await storage.uploadFile(req.file);
 
-        // 3. Create user
-        const hash = await bcrypt.hash(password, 10);
-        db.run(
-            `INSERT INTO users (name, email, password_hash, company) VALUES (?, ?, ?, ?)`,
-            [name, email, hash, company || null],
-            function (err) {
-                if (err) {
-                    console.error('User insert failed:', err);
-                    return res.status(500).json({ error: 'Failed to create user account.' });
-                }
-                
-                const userId = this.lastID;
+        // 3. Create log project
+        await new Promise((resolve, reject) => {
+            db.run(
+                `INSERT INTO logs (user_id, title, well_name, api_number, footage, num_logs, curves, notes, source_file_url, source_file_key)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    userId,
+                    title,
+                    well_name || null,
+                    api_number || null,
+                    parseInt(footage) || 0,
+                    parseInt(num_logs) || 1,
+                    parseInt(curves) || 1,
+                    notes || '',
+                    uploadResult.url,
+                    uploadResult.key
+                ],
+                function (err) { err ? reject(err) : resolve(); }
+            );
+        });
 
-                // 4. Create log project
-                db.run(
-                    `INSERT INTO logs (user_id, title, well_name, api_number, footage, num_logs, curves, notes, source_file_url, source_file_key)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [
-                        userId,
-                        title,
-                        well_name || null,
-                        api_number || null,
-                        parseInt(footage) || 0,
-                        parseInt(num_logs) || 1,
-                        parseInt(curves) || 1,
-                        notes || '',
-                        uploadResult.url,
-                        uploadResult.key
-                    ],
-                    function (err) {
-                        if (err) {
-                            console.error('Log insert failed:', err);
-                            return res.status(500).json({ error: 'Account created, but failed to create log project.' });
-                        }
-                        
-                        // 5. Automatically log the user in
-                        req.session.userId = userId;
-                        res.status(201).json({ message: 'Project submitted successfully!', redirect: '/dashboard' });
-                    }
-                );
-            }
-        );
-    });
+        // 4. Ensure logged in and redirect
+        req.session.userId = userId;
+        res.status(201).json({ message: 'Project submitted successfully!', redirect: '/dashboard' });
+
+    } catch (err) {
+        console.error('Submission failed:', err);
+        if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) {}
+        return res.status(500).json({ error: 'Submission failed. Please try again.' });
+    }
 });
 // ---------------------------------------------------------
 
