@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 160" width="100%" height="100%">
+    <defs>
+        <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#8b5cf6"/>
+            <stop offset="100%" stop-color="#3b82f6"/>
+        </linearGradient>
+    </defs>
+
+    <!-- WELL LOGGED Text -->
+    <text x="20" y="105" font-family="'Arial Black', 'Segoe UI Black', Impact, sans-serif" font-size="86" font-weight="900" fill="#ffffff" letter-spacing="-2" textLength="620">WELL LOGGED</text>
+
+    <!-- Underline Bar -->
+    <rect x="20" y="118" width="620" height="8" rx="4" fill="url(#barGradient)" stroke="none"/>
+
+    <!-- AI Box Path -->
+    <g transform="translate(160, 0)">
+        <path d="M 545,40
+                 L 510,40
+                 A 10,10 0 0,0 500,50
+                 L 500,110
+                 A 10,10 0 0,0 510,120
+                 L 560,120
+                 A 10,10 0 0,0 570,110
+                 L 570,70"
+              fill="none" stroke="#3bbca8" stroke-width="8" stroke-linecap="round"/>
+
+        <!-- AI Text -->
+        <text x="535" y="106" font-family="'Arial Black', 'Segoe UI Black', Impact, sans-serif" font-size="56" font-weight="900" fill="#3bbca8" text-anchor="middle">AI</text>
+
+        <!-- Sparkle/Star replacing the corner -->
+        <path d="M 565,-5
+                 Q 565,35 605,35
+                 Q 565,35 565,75
+                 Q 565,35 525,35
+                 Q 565,35 565,-5 Z"
+              fill="#3bbca8"/>
+    </g>
+</svg>
