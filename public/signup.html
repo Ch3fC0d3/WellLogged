@@ -39,8 +39,8 @@
     </div>
 
     <script>
-        // Check if already logged in
-        fetch('/api/auth/me').then(res => {
+        // Check if already logged in (append timestamp to completely bust aggressive browser caching)
+        fetch('/api/auth/me?t=' + Date.now()).then(res => {
             if (res.ok) {
                 window.location.href = '/dashboard';
             }
