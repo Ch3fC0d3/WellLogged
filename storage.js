@@ -69,7 +69,8 @@ async function getDownloadUrl(key) {
         const [signed] = await bucket.file(key).getSignedUrl({
             version: 'v4', // Force v4 signing instead of deprecated v2
             action: 'read',
-            expires: Date.now() + 60 * 60 * 1000 // 1 hour
+            expires: Date.now() + 60 * 60 * 1000, // 1 hour
+            virtualHostedStyle: true // Vital for v4 signatures on some GCS endpoints
         });
         return signed;
     }
