@@ -77,6 +77,20 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             `);
+
+            // Seed admin user
+            const bcrypt = require('bcrypt');
+            db.get("SELECT * FROM users WHERE email = 'gabriel@pellegrini.us'", async (err, user) => {
+                if (!err && !user) {
+                    const password_hash = await bcrypt.hash('RedQueen12', 10);
+                    db.run(`INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)`, 
+                        ['Gabriel Pellegrini', 'gabriel@pellegrini.us', password_hash, 'admin'], 
+                        (err) => {
+                            if (!err) console.log("Seeded default admin account.");
+                        }
+                    );
+                }
+            });
         });
     }
 });

@@ -10,6 +10,7 @@ const logsRoutes = require('./routes/logs');
 const billingRoutes = require('./routes/billing');
 const stripeRoutes = require('./routes/stripe');
 const adminRoutes = require('./routes/admin');
+const db = require('./db');
 
 // Webhook route must be before body-parser because it needs raw body
 app.use('/api/stripe', stripeRoutes);
