@@ -382,7 +382,8 @@
             if (path === '/dashboard' || path === '/dashboard/') {
                 document.getElementById('nav-dashboard').classList.add('active');
                 document.getElementById('dashboardView').classList.remove('hidden');
-                document.getElementById('welcomeHeader').textContent = `Welcome, ${currentUser.name || 'User'}`;
+                const firstName = (currentUser.name || 'User').split(' ')[0];
+                document.getElementById('welcomeHeader').textContent = `Welcome, ${firstName}`;
                 await loadDashboardData();
             } else if (path === '/dashboard/logs') {
                 document.getElementById('nav-logs').classList.add('active');
