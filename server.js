@@ -36,7 +36,13 @@ app.use(session({
     }
 }));
 
-// Setup API Routes
+// Setup API Routes with cache prevention
+app.use('/api', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/billing', billingRoutes);
@@ -48,11 +54,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Protect and serve dashboard routes
-app.use('/dashboard', (req, res) => {
-    console.log(`[Dashboard Route] Session ID: ${req.sessionID}, User ID: ${req.session.userId}`);
+app.use('/dashboard', (req, res, next) => {
+    // Prevent caching of this route and its redirects to avoid infinite loops
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
     if (!req.session.userId) {
+        console.log(`[Dashboard Redirect] No user session found. Redirecting to login.`);
         return res.redirect('/login.html');
     }
+    
+    // Serve dashboard.html for SPA routes starting with /dashboard
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
