@@ -1282,7 +1282,15 @@ h1 {
   }
 
   .calculator-presets {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    overflow-x: auto;
+    padding-bottom: 8px;
+    gap: 12px;
+  }
+  
+  .preset-card {
+    min-width: 140px;
+    padding: 12px;
   }
 
   .calculator-output strong,
