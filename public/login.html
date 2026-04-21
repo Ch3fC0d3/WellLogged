@@ -48,6 +48,13 @@
     </div>
 
     <script>
+        // Check if already logged in
+        fetch('/api/auth/me').then(res => {
+            if (res.ok) {
+                window.location.href = '/dashboard';
+            }
+        });
+
         document.getElementById('togglePassword').addEventListener('click', () => {
             const pwd = document.getElementById('password');
             const icon = document.getElementById('eyeIcon');

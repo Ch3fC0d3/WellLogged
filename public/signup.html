@@ -39,6 +39,13 @@
     </div>
 
     <script>
+        // Check if already logged in
+        fetch('/api/auth/me').then(res => {
+            if (res.ok) {
+                window.location.href = '/dashboard';
+            }
+        });
+
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('name').value;

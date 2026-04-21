@@ -10,6 +10,20 @@
     <title>Well Logged | Full-Service Well Log Digitization</title>
     <link rel="preload" as="image" href="./assets/well-log-digitization-hero.png" />
     <link rel="stylesheet" href="./styles.css" />
+    <script>
+      // Automatically show 'Dashboard' in nav if logged in
+      document.addEventListener('DOMContentLoaded', () => {
+          fetch('/api/auth/me').then(res => {
+              if (res.ok) {
+                  const loginBtn = document.querySelector('.nav-login-btn');
+                  if (loginBtn) {
+                      loginBtn.textContent = 'Dashboard';
+                      loginBtn.href = '/dashboard';
+                  }
+              }
+          }).catch(() => {});
+      });
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
