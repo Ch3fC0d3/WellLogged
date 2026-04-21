@@ -179,9 +179,18 @@ function updateCalculator() {
   const totalFeet = logs * feetPerLog;
   const totalCurveFeet = totalFeet * curvesPerLog;
   const billableHundreds = Math.ceil(totalCurveFeet / 100);
-  const usesCustomPricing = activeCalculatorRate === null;
-  const rawTierCost = usesCustomPricing ? null : billableHundreds * activeCalculatorRate;
-  const minimumApplied = !usesCustomPricing && logs === 1 && rawTierCost < 29.99;
+  
+  // Calculate dynamic rate based on number of logs
+  let dynamicRate = 0.69;
+  if (logs > 20) {
+    dynamicRate = null; // custom pricing
+  } else if (logs >= 5) {
+    dynamicRate = 0.49;
+  }
+
+  const usesCustomPricing = dynamicRate === null;
+  const rawTierCost = usesCustomPricing ? null : billableHundreds * dynamicRate;
+  const minimumApplied = !usesCustomPricing && logs < 5 && rawTierCost < 29.99;
   const tierCost = minimumApplied ? 29.99 : rawTierCost;
 
   calcLogs.value = logs;
@@ -192,7 +201,7 @@ function updateCalculator() {
   if (calcRate) {
     calcRate.textContent = usesCustomPricing
       ? "Email for pricing"
-      : `$${activeCalculatorRate.toFixed(2)} / curve / 100 ft`;
+      : `$${dynamicRate.toFixed(2)} / curve / 100 ft`;
   }
   calcTotalCost.textContent = usesCustomPricing ? "Email for pricing" : formatCurrency(tierCost);
 
@@ -234,10 +243,6 @@ calcPresetButtons.forEach((button) => {
     if (!calcLogs || !calcFeet || !calcCurves) return;
 
     activeCalculatorTier = button.dataset.presetTier || "Single";
-    activeCalculatorRate =
-      button.dataset.presetRate === "custom"
-        ? null
-        : clampNumber(button.dataset.presetRate, 0.01, 100);
     calcLogs.value = button.dataset.presetLogs;
     calcFeet.value = button.dataset.presetFeet;
     calcCurves.value = button.dataset.presetCurves;

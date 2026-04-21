@@ -251,23 +251,24 @@
               <button
                 type="button"
                 class="calc-preset"
+                data-preset-tier="Single"
                 data-preset-logs="1"
                 data-preset-feet="5000"
                 data-preset-curves="1"
-                data-preset-rate="0.69"
               >
                 <span class="preset-title">Single</span>
                 <span class="preset-definition">One individual well log.</span>
-                <span class="preset-size">1 to 5</span>
+                <span class="preset-size">1 to 4</span>
                 <span class="preset-rate">$0.69 / curve / 100 ft</span>
               </button>
               <button
                 type="button"
-                class="calc-preset active"
+                class="calc-preset is-active"
+                aria-pressed="true"
+                data-preset-tier="Small batch"
                 data-preset-logs="5"
                 data-preset-feet="4000"
                 data-preset-curves="2"
-                data-preset-rate="0.49"
               >
                 <span class="preset-title">Small batch</span>
                 <span class="preset-definition">A few wells or sample logs.</span>
@@ -278,14 +279,13 @@
                 type="button"
                 class="calc-preset"
                 data-preset-logs="75"
-                data-preset-feet="6500"
+                data-preset-feet="6000"
                 data-preset-curves="3"
-                data-preset-rate="0.00"
               >
                 <span class="preset-title">Large archive</span>
                 <span class="preset-definition">Bulk legacy log collection.</span>
-                <span class="preset-size">our specialty</span>
-                <span class="preset-rate">Email for pricing</span>
+                <span class="preset-size">Our specialty</span>
+                <span class="preset-rate" style="color: var(--copper)">Email for pricing</span>
               </button>
             </div>
 
