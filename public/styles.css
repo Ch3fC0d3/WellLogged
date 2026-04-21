@@ -662,80 +662,68 @@ h1 {
 
 .calculator-presets {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 32px;
-  overflow-x: auto;
-  padding-bottom: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.preset-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  padding: 20px;
-  border: 1px solid rgba(15, 118, 110, 0.15);
+.calculator-presets button {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-height: 154px;
+  border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-soft);
-  color: var(--ink);
+  color: var(--charcoal);
+  font: inherit;
+  padding: 14px;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 140px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
 }
 
-.preset-card:hover {
-  background: #ffffff;
+.calculator-presets button:hover,
+.calculator-presets button:focus-visible,
+.calculator-presets button.is-active {
   border-color: var(--teal);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.preset-card.active {
   background: var(--teal);
-  border-color: var(--teal);
   color: #ffffff;
+  transform: translateY(-1px);
 }
 
-.preset-name {
-  font-size: 18px;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-
-.preset-desc {
+.preset-title {
+  color: var(--charcoal);
   font-size: 14px;
-  color: var(--muted);
-  margin-bottom: 12px;
-  line-height: 1.4;
-}
-
-.preset-card.active .preset-desc {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.preset-math {
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--teal);
-  margin-bottom: 12px;
-}
-
-.preset-card.active .preset-math {
-  color: #ffffff;
-}
-
-.preset-rate {
-  margin-top: auto;
-  color: var(--orange);
-  font-size: 15px;
-  font-weight: 800;
+  font-weight: 950;
   line-height: 1.2;
 }
 
-.preset-card.active .preset-rate {
-  color: #ffffff;
+.preset-definition {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.preset-size {
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.preset-rate {
+  align-self: end;
+  color: var(--copper);
+  font-size: 13px;
+  font-weight: 950;
+  line-height: 1.2;
 }
 
 .calculator-presets button:hover .preset-title,
@@ -1282,6 +1270,10 @@ h1 {
   .calculator-card,
   .log-preview {
     padding: 20px;
+  }
+
+  .calculator-presets {
+    grid-template-columns: 1fr;
   }
 
   .calculator-output strong,
