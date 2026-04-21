@@ -242,9 +242,17 @@
                     <p><strong>Notes:</strong> <span id="detailNotes"></span></p>
                 </div>
                 <div style="margin-top: 30px; padding: 20px; background: var(--surface-soft); border-radius: 8px;">
-                    <h3 style="margin-top:0;">Files</h3>
-                    <p><strong>Source File:</strong> <span id="detailSource">Not available</span></p>
-                    <p><strong>Output File:</strong> <span id="detailOutput">Not available</span></p>
+                    <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+                        <span>Source File</span>
+                        <a id="detailSourceDownload" href="#" target="_blank" rel="noopener" class="btn" style="display:none; text-decoration:none; font-size:14px;">Download</a>
+                    </h3>
+                    <div id="detailSourcePreview" style="margin-top:12px; text-align:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px; min-height:200px; display:flex; align-items:center; justify-content:center;">
+                        <span style="color: var(--muted);">No file uploaded</span>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; padding: 20px; background: var(--surface-soft); border-radius: 8px;">
+                    <h3 style="margin-top:0;">Output File</h3>
+                    <p id="detailOutput">Processing...</p>
                 </div>
             </div>
 
@@ -487,7 +495,45 @@
             document.getElementById('detailDate').textContent = new Date(log.created_at).toLocaleString();
             document.getElementById('detailFootage').textContent = log.footage || '0';
             document.getElementById('detailNotes').textContent = log.notes || 'None';
-            document.getElementById('detailSource').innerHTML = log.source_file_url ? `<a href="${log.source_file_url}" target="_blank">Download</a>` : 'Pending Upload';
+
+            // Render source file preview
+            const preview = document.getElementById('detailSourcePreview');
+            const downloadBtn = document.getElementById('detailSourceDownload');
+            const fileUrl = log.download_url || log.source_file_url;
+
+            if (fileUrl) {
+                downloadBtn.href = fileUrl;
+                downloadBtn.style.display = 'inline-block';
+
+                const ext = (log.source_file_key || log.source_file_url || '').toLowerCase().split('.').pop();
+                if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) {
+                    preview.innerHTML = `<img src="${fileUrl}" alt="Log preview" style="max-width:100%; max-height:600px; border-radius:6px;" />`;
+                } else if (ext === 'pdf') {
+                    preview.innerHTML = `<iframe src="${fileUrl}" style="width:100%; height:600px; border:none; border-radius:6px;" title="Log PDF preview"></iframe>`;
+                } else if (['tif','tiff'].includes(ext)) {
+                    preview.innerHTML = `
+                        <div style="padding:40px 20px;">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p style="margin:0; font-weight:600;">TIFF file uploaded successfully</p>
+                            <p style="margin:6px 0 0; color: var(--muted); font-size:14px;">TIFF previews aren't supported by browsers. Click Download to view.</p>
+                        </div>`;
+                } else {
+                    preview.innerHTML = `
+                        <div style="padding:40px 20px;">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p style="margin:0; font-weight:600;">File uploaded successfully</p>
+                            <p style="margin:6px 0 0; color: var(--muted); font-size:14px;">Click Download to view.</p>
+                        </div>`;
+                }
+            } else {
+                preview.innerHTML = '<span style="color: var(--muted);">No file uploaded</span>';
+                downloadBtn.style.display = 'none';
+            }
+
             document.getElementById('detailOutput').innerHTML = log.output_file_url ? `<a href="${log.output_file_url}" target="_blank" class="btn">Download Deliverable</a>` : 'Processing...';
         }
 
