@@ -177,6 +177,8 @@ svg {
 .hero-inner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 48px;
   padding: 122px 0 54px;
 }
 
@@ -184,6 +186,62 @@ svg {
   width: min(740px, 100%);
   min-width: 0;
   color: #ffffff;
+}
+
+.hero-price-card {
+  flex: 0 0 auto;
+  width: min(340px, 100%);
+  padding: 32px 30px;
+  background: rgba(18, 26, 28, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  color: #ffffff;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.6);
+}
+
+.hero-price-card .hero-price-kicker {
+  display: block;
+  color: var(--copper);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hero-price-card .hero-price-figure {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 72px;
+  font-weight: 950;
+  line-height: 1;
+  color: #ffffff;
+}
+
+.hero-price-card .hero-price-unit {
+  display: block;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.hero-price-card p {
+  margin: 16px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+@media (max-width: 900px) {
+  .hero-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .hero-price-card {
+    width: 100%;
+    max-width: 420px;
+  }
 }
 
 .eyebrow,
