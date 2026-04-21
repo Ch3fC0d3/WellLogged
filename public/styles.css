@@ -665,6 +665,8 @@ h1 {
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 32px;
+  overflow-x: auto;
+  padding-bottom: 8px;
 }
 
 .preset-card {
@@ -679,6 +681,7 @@ h1 {
   color: var(--ink);
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 140px;
 }
 
 .preset-card:hover {
@@ -1279,18 +1282,6 @@ h1 {
   .calculator-card,
   .log-preview {
     padding: 20px;
-  }
-
-  .calculator-presets {
-    grid-template-columns: repeat(3, 1fr);
-    overflow-x: auto;
-    padding-bottom: 8px;
-    gap: 12px;
-  }
-  
-  .preset-card {
-    min-width: 140px;
-    padding: 12px;
   }
 
   .calculator-output strong,
