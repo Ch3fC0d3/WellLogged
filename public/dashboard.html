@@ -178,9 +178,31 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Estimated Footage</label>
-                        <input type="number" id="uploadFootage" name="footage" class="form-input" placeholder="e.g. 5000">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; margin-bottom: 20px;">
+                        <div>
+                            <label class="form-label">Number of Logs</label>
+                            <input type="number" id="uploadNumLogs" name="num_logs" class="form-input" value="1" min="1">
+                        </div>
+                        <div>
+                            <label class="form-label">Avg Feet / Log</label>
+                            <input type="number" id="uploadFootage" name="footage" class="form-input" value="5000" min="0" placeholder="e.g. 5000">
+                        </div>
+                        <div>
+                            <label class="form-label">Curves / Log</label>
+                            <input type="number" id="uploadCurves" name="curves" class="form-input" value="1" min="1">
+                        </div>
+                    </div>
+
+                    <!-- Live Estimate Panel -->
+                    <div id="estimatePanel" style="background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%); color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                        <div>
+                            <div style="font-size: 11px; font-weight: 900; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.7);">Project Estimate</div>
+                            <div id="estimateTotal" style="font-size: 32px; font-weight: 900; line-height: 1.1; margin-top: 4px;">$34.50</div>
+                        </div>
+                        <div style="text-align: right; font-size: 13px; color: rgba(255,255,255,0.85);">
+                            <div><strong id="estimateCurveFeet">5,000 ft</strong> of curve footage</div>
+                            <div id="estimateRate" style="opacity: 0.8;">$0.69 / curve / 100 ft</div>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -593,6 +615,47 @@
         const dropzone = document.getElementById('dropzone');
         const fileInput = document.getElementById('uploadFile');
         const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+        // Live Estimate Calculator
+        function updateEstimate() {
+            const numLogs = Math.max(1, parseInt(document.getElementById('uploadNumLogs').value) || 1);
+            const feetPerLog = Math.max(0, parseInt(document.getElementById('uploadFootage').value) || 0);
+            const curves = Math.max(1, parseInt(document.getElementById('uploadCurves').value) || 1);
+
+            // Rate tiers: $0.69 single (1 log), $0.49 small batch (2-20), email for pricing (21+)
+            let rate, rateLabel, totalStr;
+            const totalCurveFeet = numLogs * feetPerLog * curves;
+
+            if (numLogs > 20) {
+                rate = null;
+                rateLabel = 'Large archive — email for pricing';
+                totalStr = 'Email for quote';
+            } else if (numLogs >= 2) {
+                rate = 0.49;
+                rateLabel = '$0.49 / curve / 100 ft';
+            } else {
+                rate = 0.69;
+                rateLabel = '$0.69 / curve / 100 ft';
+            }
+
+            if (rate !== null) {
+                // Round up to next 100 ft
+                const billableUnits = Math.ceil(feetPerLog / 100) * numLogs * curves;
+                let total = billableUnits * rate;
+                // $29.99 minimum for single log
+                if (numLogs === 1 && total < 29.99) total = 29.99;
+                totalStr = '$' + total.toFixed(2);
+            }
+
+            document.getElementById('estimateTotal').textContent = totalStr;
+            document.getElementById('estimateCurveFeet').textContent = totalCurveFeet.toLocaleString() + ' ft';
+            document.getElementById('estimateRate').textContent = rateLabel;
+        }
+
+        ['uploadNumLogs', 'uploadFootage', 'uploadCurves'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateEstimate);
+        });
+        updateEstimate();
 
         dropzone.addEventListener('dragover', (e) => {
             e.preventDefault();
