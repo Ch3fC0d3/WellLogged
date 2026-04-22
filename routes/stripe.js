@@ -18,6 +18,12 @@ router.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
 
     // Handle the event
     switch (event.type) {
+        case 'checkout.session.completed':
+            const session = event.data.object;
+            if (session.metadata && session.metadata.logId) {
+                handleLogCheckoutSuccess(session);
+            }
+            break;
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
             const subscription = event.data.object;
@@ -46,6 +52,23 @@ function getUserByStripeCustomerId(customerId, callback) {
     db.get(`SELECT id FROM users WHERE stripe_customer_id = ?`, [customerId], (err, user) => {
         if (user) callback(user.id);
     });
+}
+
+function handleLogCheckoutSuccess(session) {
+    const logId = session.metadata.logId;
+    const userId = session.metadata.userId;
+    const customerId = session.customer;
+
+    // Update log status to paid
+    db.run(`UPDATE logs SET status = 'paid', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`, [logId, userId], (err) => {
+        if (err) console.error('Failed to update log to paid:', err);
+        else console.log(`Log ${logId} marked as paid.`);
+    });
+
+    // Make sure user has the customer ID saved
+    if (customerId) {
+        db.run(`UPDATE users SET stripe_customer_id = ? WHERE id = ? AND stripe_customer_id IS NULL`, [customerId, userId]);
+    }
 }
 
 function handleSubscriptionChange(sub) {

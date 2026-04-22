@@ -122,13 +122,34 @@ router.get('/:id', requireAuth, async (req, res) => {
     db.get(`SELECT * FROM logs WHERE id = ? AND user_id = ?`, [logId, req.session.userId], async (err, log) => {
         if (err) return res.status(500).json({ error: 'Database error' });
         if (!log) return res.status(404).json({ error: 'Log not found' });
-        // Generate fresh signed URL if using cloud storage
+        // Generate fresh signed URL for source file
         if (log.source_file_key) {
             try { log.download_url = await storage.getDownloadUrl(log.source_file_key); }
             catch (e) { log.download_url = log.source_file_url; }
         } else {
             log.download_url = log.source_file_url;
         }
+        
+        // Hide output file if not paid (unless admin)
+        const isPaid = ['paid', 'delivered'].includes(log.status);
+        if (isPaid || req.session.role === 'admin') {
+            // Generate fresh signed URL for output file
+            if (log.output_file_key) {
+                try { log.output_download_url = await storage.getDownloadUrl(log.output_file_key); }
+                catch (e) { log.output_download_url = log.output_file_url; }
+            } else if (log.output_file_url) {
+                log.output_download_url = log.output_file_url;
+            }
+        } else {
+            // Scrub output file details before sending to frontend
+            console.log('Scrubbing output for user role:', req.session.role, 'status:', log.status);
+            console.log('Before scrub:', Object.keys(log));
+            delete log.output_file_key;
+            delete log.output_file_url;
+            log.output_download_url = null;
+            console.log('After scrub:', Object.keys(log), 'output_file_url =', log.output_file_url);
+        }
+        
         res.json({ log });
     });
 });

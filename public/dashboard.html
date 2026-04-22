@@ -35,8 +35,12 @@
         .logs-table th, .logs-table td { text-align: left; padding: 12px; border-bottom: 1px solid var(--line); }
         .logs-table th { color: var(--muted); text-transform: uppercase; font-size: 12px; }
         .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #eee; color: #333; text-transform: capitalize; }
-        .status-uploaded { background: #e0f2fe; color: #0f766e; }
-        .status-completed { background: #dcfce7; color: #0369a1; }
+        .status-uploaded { background: #e0f2fe; color: #0369a1; }
+        .status-processing { background: #fef3c7; color: #166534; }
+        .status-qa_review { background: #ede9fe; color: #5b21b6; }
+        .status-ready_unpaid { background: #ffedd5; color: #92400e; }
+        .status-paid { background: #dcfce7; color: #166534; }
+        .status-delivered { background: #ccfbf1; color: #0f766e; }
         
         /* Buttons */
         .btn { display: inline-block; background: var(--teal); color: white; padding: 10px 16px; border-radius: 4px; text-decoration: none; font-weight: bold; cursor: pointer; border: none; }
@@ -240,18 +244,30 @@
                     <p><strong>Total Footage:</strong> <span id="detailFootage"></span> ft</p>
                     <p><strong>Notes:</strong> <span id="detailNotes"></span></p>
                 </div>
-                <div style="margin-top: 30px; padding: 20px; background: var(--surface-soft); border-radius: 8px;">
-                    <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center;">
-                        <span>Source File</span>
-                        <a id="detailSourceDownload" href="#" target="_blank" rel="noopener" class="btn" style="display:none; text-decoration:none; font-size:14px;">Download</a>
-                    </h3>
-                    <div id="detailSourcePreview" style="margin-top:12px; text-align:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px; min-height:200px; display:flex; align-items:center; justify-content:center;">
-                        <span style="color: var(--muted);">No file uploaded</span>
+
+                <!-- Side-by-side file comparison -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 30px;">
+                    <!-- Source / Original File -->
+                    <div style="padding: 20px; background: var(--surface-soft); border-radius: 8px;">
+                        <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+                            <span>Original File</span>
+                            <a id="detailSourceDownload" href="#" target="_blank" rel="noopener" class="btn" style="display:none; text-decoration:none; font-size:13px; padding:6px 12px;">Download</a>
+                        </h3>
+                        <div id="detailSourcePreview" style="margin-top:12px; text-align:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px; min-height:200px; display:flex; align-items:center; justify-content:center;">
+                            <span style="color: var(--muted);">No file uploaded</span>
+                        </div>
                     </div>
-                </div>
-                <div style="margin-top: 20px; padding: 20px; background: var(--surface-soft); border-radius: 8px;">
-                    <h3 style="margin-top:0;">Output File</h3>
-                    <p id="detailOutput">Processing...</p>
+
+                    <!-- Output / Deliverable File -->
+                    <div style="padding: 20px; background: var(--surface-soft); border-radius: 8px;">
+                        <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+                            <span>Edited / Deliverable</span>
+                            <a id="detailOutputDownload" href="#" target="_blank" rel="noopener" class="btn" style="display:none; text-decoration:none; font-size:13px; padding:6px 12px;">Download</a>
+                        </h3>
+                        <div id="detailOutputPreview" style="margin-top:12px; text-align:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px; min-height:200px; display:flex; align-items:center; justify-content:center;">
+                            <span style="color: var(--muted);">Not yet available</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -325,7 +341,13 @@
 
             <!-- Admin View -->
             <div id="adminView" class="hidden">
-                <h1>Admin Panel</h1>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 20px;">
+                    <h1 style="margin: 0;">Admin Panel</h1>
+                    <button id="adminSyncStripeBtn" class="btn" style="display: flex; gap: 8px; align-items: center;" onclick="syncStripeData(this)">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Sync Stripe Data
+                    </button>
+                </div>
                 
                 <h3 style="margin-top: 30px;">All Platform Users</h3>
                 <div style="overflow-x: auto;">
@@ -335,8 +357,9 @@
                                 <th>ID</th>
                                 <th>Name</th>
                                 <th>Email</th>
-                                <th>Company</th>
                                 <th>Role</th>
+                                <th>Stripe ID</th>
+                                <th>Subscription</th>
                                 <th>Joined</th>
                             </tr>
                         </thead>
@@ -350,16 +373,116 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>User Email</th>
-                                <th>Project Name</th>
+                                <th>User</th>
+                                <th>Project</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th>Output File</th>
                             </tr>
                         </thead>
                         <tbody id="adminLogsTable"></tbody>
                     </table>
                 </div>
             </div>
+            
+            <!-- Footer -->
+            <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <span>Welllogged proudly uses</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 180" style="height: 40px; width: auto; display: block;">
+                  <defs>
+                    <filter id="ts" x="-3%" y="-3%" width="106%" height="106%">
+                      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.8"/>
+                    </filter>
+                    <style>
+                      @keyframes blinkF {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0; }
+                      }
+                      .blink-f { animation: blinkF 8s ease-in-out infinite; }
+                    </style>
+                    
+                    <!-- Linear Gradients for 3D metallic text effect -->
+                    <linearGradient id="gradOrange" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#FFA81C"/>
+                      <stop offset="50%" stop-color="#F25B00"/>
+                      <stop offset="100%" stop-color="#B23500"/>
+                    </linearGradient>
+
+                    <linearGradient id="gradSilver" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#E5E5E5"/>
+                      <stop offset="50%" stop-color="#A5A5A5"/>
+                      <stop offset="100%" stop-color="#707070"/>
+                    </linearGradient>
+
+                    <linearGradient id="gradGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#C5ED52"/>
+                      <stop offset="50%" stop-color="#6DBA24"/>
+                      <stop offset="100%" stop-color="#2D7212"/>
+                    </linearGradient>
+
+                    <!-- Linear Gradients for thick glossy wave lines -->
+                    <linearGradient id="waveSilver" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#FFFFFF"/>
+                      <stop offset="100%" stop-color="#808080"/>
+                    </linearGradient>
+                    <linearGradient id="waveOrange" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#FFB338"/>
+                      <stop offset="100%" stop-color="#D96300"/>
+                    </linearGradient>
+                    <linearGradient id="waveGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#A4E033"/>
+                      <stop offset="100%" stop-color="#469910"/>
+                    </linearGradient>
+                  </defs>
+
+                  <g transform="translate(10,0)">
+                    <!-- Orange wave (background) -->
+                    <path d="
+                      M 10,58
+                      C 10,58  20,100  35,100
+                      C 50,100 65,30   80,30
+                      C 95,30  110,60  120,60
+                      C 130,60 145,25  160,25
+                      C 175,25 190,58  200,58
+                    " fill="none" stroke="url(#waveOrange)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#ts)"/>
+
+                    <!-- Green wave (tall amplitude foreground) -->
+                    <path d="
+                      M 190,58
+                      C 200,58 220,10  245,10
+                      C 270,10 290,110 320,110
+                      C 350,110 370,15 400,15
+                      C 430,15 450,100 465,100
+                      C 480,100 495,20 500,20
+                    " fill="none" stroke="url(#waveGreen)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" filter="url(#ts)"/>
+
+                    <!-- Silver horizontal-ish wave (crosses through everything) -->
+                    <path d="
+                      M 5,50
+                      C 30,50  70,50   100,50
+                      C 130,50 150,85  180,85
+                      C 210,85 240,40  280,40
+                      C 320,40 350,60  380,60
+                      C 410,60 440,35  465,35
+                      C 480,35 495,45  505,45
+                    " fill="none" stroke="url(#waveSilver)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" filter="url(#ts)"/>
+
+                    <!-- TIF text (Orange) -->
+                    <text x="15" y="125" font-family="'Arial Black', 'Impact', Arial, sans-serif" font-weight="900" font-size="92" fill="url(#gradOrange)" letter-spacing="-4" filter="url(#ts)">TIF</text>
+
+                    <!-- Blinking extra F (Orange) — TIFF spelling easter egg -->
+                    <text class="blink-f" x="167" y="125" font-family="'Arial Black', 'Impact', Arial, sans-serif" font-weight="900" font-size="92" fill="url(#gradSilver)" letter-spacing="-4" filter="url(#ts)">F</text>
+
+                    <!-- L text (Silver) -->
+                    <text x="225" y="125" font-family="'Arial Black', 'Impact', Arial, sans-serif" font-weight="900" font-size="92" fill="url(#gradGreen)" letter-spacing="-2" filter="url(#ts)">L</text>
+
+                    <!-- AS text (Green) -->
+                    <text x="285" y="125" font-family="'Arial Black', 'Impact', Arial, sans-serif" font-weight="900" font-size="92" fill="url(#gradGreen)" letter-spacing="-3" filter="url(#ts)">AS</text>
+
+                    <!-- Subtitle (Bright Green) -->
+                    <text x="45" y="165" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="34" fill="#69C21A" letter-spacing="0.5" filter="url(#ts)">Well Log Digitalization</text>
+                  </g>
+                </svg>
+            </footer>
         </main>
     </div>
 
@@ -460,8 +583,8 @@
             const logs = data.logs || [];
             
             document.getElementById('statTotalLogs').textContent = logs.length;
-            document.getElementById('statCompleted').textContent = logs.filter(l => l.status === 'completed' || l.status === 'delivered').length;
-            document.getElementById('statInProgress').textContent = logs.filter(l => ['uploaded', 'in review', 'digitizing'].includes(l.status)).length;
+            document.getElementById('statCompleted').textContent = logs.filter(l => ['paid', 'delivered'].includes(l.status)).length;
+            document.getElementById('statInProgress').textContent = logs.filter(l => ['uploaded', 'processing', 'qa_review', 'ready_unpaid'].includes(l.status)).length;
             
             const tbody = document.getElementById('recentLogsTableBody');
             tbody.innerHTML = '';
@@ -519,45 +642,137 @@
             document.getElementById('detailFootage').textContent = log.footage || '0';
             document.getElementById('detailNotes').textContent = log.notes || 'None';
 
-            // Render source file preview
-            const preview = document.getElementById('detailSourcePreview');
-            const downloadBtn = document.getElementById('detailSourceDownload');
-            const fileUrl = log.download_url || log.source_file_url;
-
-            if (fileUrl) {
+            // Helper to render file preview into a container
+            function renderPreview(container, downloadBtn, fileUrl, fileKey) {
+                if (!fileUrl) {
+                    container.innerHTML = '<span style="color: var(--muted);">Not yet available</span>';
+                    downloadBtn.style.display = 'none';
+                    return;
+                }
                 downloadBtn.href = fileUrl;
                 downloadBtn.style.display = 'inline-block';
 
-                const ext = (log.source_file_key || log.source_file_url || '').toLowerCase().split('.').pop();
+                const ext = (fileKey || fileUrl || '').toLowerCase().split('.').pop();
                 if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) {
-                    preview.innerHTML = `<img src="${fileUrl}" alt="Log preview" style="max-width:100%; max-height:600px; border-radius:6px;" />`;
+                    container.innerHTML = `<img src="${fileUrl}" alt="Preview" style="max-width:100%; max-height:600px; border-radius:6px;" />`;
                 } else if (ext === 'pdf') {
-                    preview.innerHTML = `<iframe src="${fileUrl}" style="width:100%; height:600px; border:none; border-radius:6px;" title="Log PDF preview"></iframe>`;
-                } else if (['tif','tiff'].includes(ext)) {
-                    preview.innerHTML = `
+                    container.innerHTML = `<iframe src="${fileUrl}" style="width:100%; height:600px; border:none; border-radius:6px;" title="PDF preview"></iframe>`;
+                } else if (['las','LAS'].includes(ext) || ext === 'las') {
+                    container.innerHTML = `
                         <div style="padding:40px 20px;">
                             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            <p style="margin:0; font-weight:600;">TIFF file uploaded successfully</p>
-                            <p style="margin:6px 0 0; color: var(--muted); font-size:14px;">TIFF previews aren't supported by browsers. Click Download to view.</p>
+                            <p style="margin:0; font-weight:600;">LAS file ready</p>
+                            <p style="margin:6px 0 0; color: var(--muted); font-size:14px;">Click Download to save the file.</p>
+                        </div>`;
+                } else if (['tif','tiff'].includes(ext)) {
+                    container.innerHTML = `
+                        <div style="padding:40px 20px;">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p style="margin:0; font-weight:600;">TIFF file uploaded</p>
+                            <p style="margin:6px 0 0; color: var(--muted); font-size:14px;">Click Download to view.</p>
                         </div>`;
                 } else {
-                    preview.innerHTML = `
+                    container.innerHTML = `
                         <div style="padding:40px 20px;">
                             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            <p style="margin:0; font-weight:600;">File uploaded successfully</p>
+                            <p style="margin:0; font-weight:600;">File ready</p>
                             <p style="margin:6px 0 0; color: var(--muted); font-size:14px;">Click Download to view.</p>
                         </div>`;
                 }
-            } else {
-                preview.innerHTML = '<span style="color: var(--muted);">No file uploaded</span>';
-                downloadBtn.style.display = 'none';
             }
 
-            document.getElementById('detailOutput').innerHTML = log.output_file_url ? `<a href="${log.output_file_url}" target="_blank" class="btn">Download Deliverable</a>` : 'Processing...';
+            // Source file
+            renderPreview(
+                document.getElementById('detailSourcePreview'),
+                document.getElementById('detailSourceDownload'),
+                log.download_url || log.source_file_url,
+                log.source_file_key || log.source_file_url
+            );
+
+            // Output / deliverable file
+            const outputPreviewContainer = document.getElementById('detailOutputPreview');
+            const outputDownloadBtn = document.getElementById('detailOutputDownload');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const isWaitingForWebhook = urlParams.has('session_id') && log.status === 'ready_unpaid';
+            
+            if (log.status === 'ready_unpaid') {
+                outputDownloadBtn.style.display = 'none';
+                outputPreviewContainer.style.background = 'var(--surface)';
+                outputPreviewContainer.style.border = '2px dashed var(--teal)';
+                outputPreviewContainer.innerHTML = `
+                    <div style="padding:20px; text-align:center; width:100%;">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h2 style="margin:0 0 10px; font-size:20px; color: var(--text);">Your digitized log is ready</h2>
+                        <p style="margin:0 0 20px; color: var(--muted); font-size:14px;">Preview available. Full download unlocks after payment.</p>
+                        
+                        <div style="background:var(--surface-soft); border-radius:6px; padding:15px; margin-bottom:24px; text-align:left;">
+                            <p style="margin:0 0 8px; font-size:14px;"><strong>Depth Range:</strong> ${log.footage || 0} feet</p>
+                            <p style="margin:0 0 8px; font-size:14px;"><strong>Curves Extracted:</strong> ${log.curves || 1}</p>
+                            <p style="margin:0 0 8px; font-size:14px;"><strong>Status:</strong> Human-Reviewed QA Passed</p>
+                            <p style="margin:0; font-size:14px;"><strong>Completion Date:</strong> ${new Date(log.updated_at || log.created_at).toLocaleDateString()}</p>
+                        </div>
+                        
+                        <div style="font-size:24px; font-weight:700; margin-bottom:16px;">
+                            ${log.amount_due ? '$' + (log.amount_due / 100).toFixed(2) : 'Awaiting Price'}
+                        </div>
+                        
+                        ${isWaitingForWebhook ? `
+                            <div style="padding:10px; background:#fffbeb; color:#d97706; border-radius:4px; font-size:14px; margin-bottom:15px; font-weight:600;">
+                                Payment processing... Please refresh the page in a few seconds to see your files.
+                            </div>
+                            <button onclick="window.location.reload()" class="btn" style="width:100%; padding:14px; font-size:16px;">
+                                Refresh Page
+                            </button>
+                        ` : (log.amount_due ? `
+                            <button onclick="startCheckout(${log.id})" class="btn" style="width:100%; padding:14px; font-size:16px; display:flex; justify-content:center; gap:8px;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                Pay to Download
+                            </button>
+                        ` : `<button class="btn" disabled style="width:100%; opacity:0.5;">Pricing pending...</button>`)}
+                    </div>
+                `;
+            } else if (['paid', 'delivered'].includes(log.status)) {
+                outputPreviewContainer.style.background = '#fff';
+                outputPreviewContainer.style.border = '1px solid var(--line)';
+                renderPreview(
+                    outputPreviewContainer,
+                    outputDownloadBtn,
+                    log.output_download_url || log.output_file_url,
+                    log.output_file_key || log.output_file_url
+                );
+            } else {
+                outputDownloadBtn.style.display = 'none';
+                outputPreviewContainer.style.background = '#fff';
+                outputPreviewContainer.style.border = '1px solid var(--line)';
+                outputPreviewContainer.innerHTML = `
+                    <div style="padding:40px 20px; text-align:center;">
+                        <span style="color: var(--muted);">Output file not yet available. Current status: ${log.status}</span>
+                    </div>
+                `;
+            }
+        }
+
+        async function startCheckout(logId) {
+            try {
+                const res = await fetch(`/api/billing/checkout/log/${logId}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert(data.error || 'Failed to start checkout');
+                }
+            } catch (err) {
+                alert('Network error during checkout');
+            }
         }
 
         async function loadBillingData() {
@@ -602,9 +817,18 @@
                     <tr>
                         <td>${u.id}</td>
                         <td>${u.name || 'N/A'}</td>
-                        <td>${u.email}</td>
-                        <td>${u.company || '-'}</td>
+                        <td>${u.email}<br><span style="color:var(--muted); font-size:12px;">${u.company || '-'}</span></td>
                         <td><span class="status-badge">${u.role}</span></td>
+                        <td>
+                            ${u.stripe_customer_id 
+                                ? `<a href="https://dashboard.stripe.com/customers/${u.stripe_customer_id}" target="_blank" style="color:var(--teal); font-size:12px; text-decoration:none;">${u.stripe_customer_id}</a>` 
+                                : '<span style="color:var(--muted); font-size:12px;">Not linked</span>'}
+                        </td>
+                        <td>
+                            ${u.subscription_status 
+                                ? `<span class="status-badge" style="background:#ccfbf1; color:#0f766e;">${u.subscription_status}</span>` 
+                                : '<span style="color:var(--muted); font-size:12px;">None</span>'}
+                        </td>
                         <td>${new Date(u.created_at).toLocaleDateString()}</td>
                     </tr>
                 `).join('');
@@ -616,16 +840,25 @@
                         <td>${l.user_email}</td>
                         <td>${l.title}</td>
                         <td>
-                            <select onchange="updateLogStatus(${l.id}, this.value)">
+                            <select onchange="updateLogStatus(${l.id}, this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--line); margin-bottom: 4px; display: block;">
                                 <option value="uploaded" ${l.status === 'uploaded' ? 'selected' : ''}>Uploaded</option>
-                                <option value="in review" ${l.status === 'in review' ? 'selected' : ''}>In Review</option>
-                                <option value="digitizing" ${l.status === 'digitizing' ? 'selected' : ''}>Digitizing</option>
-                                <option value="completed" ${l.status === 'completed' ? 'selected' : ''}>Completed</option>
+                                <option value="processing" ${l.status === 'processing' ? 'selected' : ''}>Processing</option>
+                                <option value="qa_review" ${l.status === 'qa_review' ? 'selected' : ''}>QA Review</option>
+                                <option value="ready_unpaid" ${l.status === 'ready_unpaid' ? 'selected' : ''}>Ready (Unpaid)</option>
+                                <option value="paid" ${l.status === 'paid' ? 'selected' : ''}>Paid</option>
                                 <option value="delivered" ${l.status === 'delivered' ? 'selected' : ''}>Delivered</option>
                             </select>
+                            <input type="number" placeholder="Price (cents)" value="${l.amount_due || ''}" style="width: 90px; padding: 4px; font-size: 12px; border: 1px solid var(--line); border-radius: 4px;" onchange="updateLogAmount(${l.id}, this.value)" title="Amount Due in cents (e.g. 5000 for $50)" />
                         </td>
                         <td>
-                            <button class="btn btn-outline" style="padding: 4px 8px; font-size: 12px;" onclick="addOutputUrl(${l.id})">Output URL</button>
+                            ${l.output_file_key 
+                                ? '<span style="color:var(--teal); font-weight:600; font-size:12px;">&#10003; Delivered</span>' 
+                                : ''}
+                            <label class="btn btn-outline" style="padding:4px 10px; font-size:12px; cursor:pointer; display:inline-block;">
+                                ${l.output_file_key ? 'Replace' : 'Upload'}
+                                <input type="file" style="display:none;" onchange="uploadOutputFile(${l.id}, this)" accept=".las,.LAS,.pdf,.tiff,.tif,.png,.jpg,.jpeg,.zip">
+                            </label>
+                            <span id="adminUploadStatus_${l.id}" style="font-size:12px; margin-left:6px;"></span>
                         </td>
                     </tr>
                 `).join('');
@@ -642,15 +875,65 @@
             });
         }
 
-        async function addOutputUrl(id) {
-            const url = prompt("Enter the output deliverable URL for this log:");
-            if (url) {
-                await fetch(`/api/admin/logs/${id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ output_file_url: url, status: 'completed' })
+        async function updateLogAmount(id, amountDueStr) {
+            const amount_due = parseInt(amountDueStr, 10);
+            if (isNaN(amount_due)) return;
+            await fetch(`/api/admin/logs/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount_due })
+            });
+        }
+
+        async function uploadOutputFile(logId, input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const statusEl = document.getElementById(`adminUploadStatus_${logId}`);
+            statusEl.textContent = 'Uploading...';
+            statusEl.style.color = 'var(--muted)';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`/api/admin/logs/${logId}/output`, {
+                    method: 'POST',
+                    body: formData
                 });
-                loadAdminData();
+                if (res.ok) {
+                    statusEl.textContent = 'Done!';
+                    statusEl.style.color = 'var(--teal)';
+                    setTimeout(() => loadAdminData(), 1000);
+                } else {
+                    const data = await res.json();
+                    statusEl.textContent = data.error || 'Failed';
+                    statusEl.style.color = '#ef4444';
+                }
+            } catch (err) {
+                statusEl.textContent = 'Network error';
+                statusEl.style.color = '#ef4444';
+            }
+        }
+
+        async function syncStripeData(btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Syncing...';
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/admin/sync-stripe', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message || 'Sync successful');
+                    await loadAdminData();
+                } else {
+                    alert(data.error || 'Failed to sync');
+                }
+            } catch (err) {
+                alert('Network error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
 

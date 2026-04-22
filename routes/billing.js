@@ -49,4 +49,65 @@ router.post('/create-portal-session', requireAuth, async (req, res) => {
     }
 });
 
+// Create Checkout Session for a Log
+router.post('/checkout/log/:id', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const logId = req.params.id;
+
+        db.get(`SELECT * FROM logs WHERE id = ? AND user_id = ?`, [logId, userId], async (err, log) => {
+            if (err || !log) return res.status(404).json({ error: 'Log not found' });
+            if (log.status === 'paid' || log.status === 'delivered') return res.status(400).json({ error: 'Log is already paid.' });
+            
+            const amountDue = log.amount_due;
+            if (!amountDue || amountDue <= 0) {
+                return res.status(400).json({ error: 'Amount due is not set for this log.' });
+            }
+
+            if (!stripe) {
+                return res.status(500).json({ error: 'Stripe is not configured on the server.' });
+            }
+
+            // Get customer ID
+            db.get(`SELECT stripe_customer_id, email FROM users WHERE id = ?`, [userId], async (err, user) => {
+                const sessionConfig = {
+                    payment_method_types: ['card'],
+                    line_items: [
+                        {
+                            price_data: {
+                                currency: 'usd',
+                                product_data: {
+                                    name: `Digitized Log: ${log.title}`,
+                                    description: `${log.footage || 0} feet, ${log.curves || 1} curve(s)`
+                                },
+                                unit_amount: amountDue, // Amount in cents
+                            },
+                            quantity: 1,
+                        },
+                    ],
+                    mode: 'payment',
+                    success_url: `${req.protocol}://${req.get('host')}/dashboard/logs/${log.id}?session_id={CHECKOUT_SESSION_ID}`,
+                    cancel_url: `${req.protocol}://${req.get('host')}/dashboard/logs/${log.id}`,
+                    metadata: {
+                        logId: log.id.toString(),
+                        userId: userId.toString()
+                    }
+                };
+
+                if (user && user.stripe_customer_id) {
+                    sessionConfig.customer = user.stripe_customer_id;
+                } else if (user && user.email) {
+                    sessionConfig.customer_email = user.email;
+                }
+
+                const session = await stripe.checkout.sessions.create(sessionConfig);
+                res.json({ url: session.url });
+            });
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 module.exports = router;

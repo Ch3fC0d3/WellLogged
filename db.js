@@ -38,10 +38,12 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     footage INTEGER,
                     num_logs INTEGER DEFAULT 1,
                     curves INTEGER DEFAULT 1,
+                    amount_due INTEGER,
                     status TEXT DEFAULT 'uploaded',
                     source_file_url TEXT,
                     source_file_key TEXT,
                     output_file_url TEXT,
+                    output_file_key TEXT,
                     notes TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -53,6 +55,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
             db.run(`ALTER TABLE logs ADD COLUMN num_logs INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE logs ADD COLUMN curves INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE logs ADD COLUMN source_file_key TEXT`, () => {});
+            db.run(`ALTER TABLE logs ADD COLUMN output_file_key TEXT`, () => {});
+            db.run(`ALTER TABLE logs ADD COLUMN amount_due INTEGER`, () => {});
 
             // Invoices table
             db.run(`
