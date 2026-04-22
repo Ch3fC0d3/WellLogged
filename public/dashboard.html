@@ -348,6 +348,33 @@
                         Sync Stripe Data
                     </button>
                 </div>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-top:22px;">
+                    <div style="border:1px solid var(--line); border-radius:8px; padding:12px;">
+                        <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Users</div>
+                        <div id="adminStatUsers" style="font-size:24px; font-weight:700; margin-top:4px;">0</div>
+                    </div>
+                    <div style="border:1px solid var(--line); border-radius:8px; padding:12px;">
+                        <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Admins</div>
+                        <div id="adminStatAdmins" style="font-size:24px; font-weight:700; margin-top:4px;">0</div>
+                    </div>
+                    <div style="border:1px solid var(--line); border-radius:8px; padding:12px;">
+                        <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Projects</div>
+                        <div id="adminStatLogs" style="font-size:24px; font-weight:700; margin-top:4px;">0</div>
+                    </div>
+                    <div style="border:1px solid var(--line); border-radius:8px; padding:12px;">
+                        <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Ready Unpaid</div>
+                        <div id="adminStatReadyUnpaid" style="font-size:24px; font-weight:700; margin-top:4px;">0</div>
+                    </div>
+                    <div style="border:1px solid var(--line); border-radius:8px; padding:12px;">
+                        <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Open Revenue</div>
+                        <div id="adminStatOpenRevenue" style="font-size:24px; font-weight:700; margin-top:4px;">$0.00</div>
+                    </div>
+                    <div style="border:1px solid var(--line); border-radius:8px; padding:12px;">
+                        <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Collected Revenue</div>
+                        <div id="adminStatCollectedRevenue" style="font-size:24px; font-weight:700; margin-top:4px;">$0.00</div>
+                    </div>
+                </div>
                 
                 <h3 style="margin-top: 30px;">All Platform Users</h3>
                 <div style="overflow-x: auto;">
@@ -360,6 +387,9 @@
                                 <th>Role</th>
                                 <th>Stripe ID</th>
                                 <th>Subscription</th>
+                                <th>Projects</th>
+                                <th>Paid</th>
+                                <th>Last Project</th>
                                 <th>Joined</th>
                             </tr>
                         </thead>
@@ -375,7 +405,10 @@
                                 <th>ID</th>
                                 <th>User</th>
                                 <th>Project</th>
+                                <th>Well / API</th>
+                                <th>Specs</th>
                                 <th>Status</th>
+                                <th>Created</th>
                                 <th>Source File</th>
                                 <th>Output File</th>
                             </tr>
@@ -813,8 +846,69 @@
                 const { users } = await resUsers.json();
                 const { logs } = await resLogs.json();
 
+                const formatCurrency = (cents) => {
+                    const numericCents = Number(cents);
+                    if (!Number.isFinite(numericCents)) return '$0.00';
+                    return new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD'
+                    }).format(numericCents / 100);
+                };
+
+                const formatShortDate = (value) => {
+                    if (!value) return '-';
+                    const d = new Date(value);
+                    if (isNaN(d.getTime())) return '-';
+                    return d.toLocaleDateString();
+                };
+
+                const logsByUserId = new Map();
+                let openRevenueCents = 0;
+                let collectedRevenueCents = 0;
+                let readyUnpaidCount = 0;
+
+                logs.forEach((log) => {
+                    const userId = Number(log.user_id);
+                    if (!logsByUserId.has(userId)) {
+                        logsByUserId.set(userId, { projects: 0, paidCents: 0, openCents: 0, lastActivity: null });
+                    }
+
+                    const stats = logsByUserId.get(userId);
+                    stats.projects += 1;
+
+                    const amountDue = Number(log.amount_due);
+                    if (log.status === 'ready_unpaid') {
+                        readyUnpaidCount += 1;
+                    }
+                    if (log.status === 'ready_unpaid' && Number.isFinite(amountDue)) {
+                        openRevenueCents += amountDue;
+                        stats.openCents += amountDue;
+                    }
+                    if (['paid', 'delivered'].includes(log.status) && Number.isFinite(amountDue)) {
+                        collectedRevenueCents += amountDue;
+                        stats.paidCents += amountDue;
+                    }
+
+                    const activityDate = new Date(log.updated_at || log.created_at || 0);
+                    if (!stats.lastActivity || activityDate > stats.lastActivity) {
+                        stats.lastActivity = activityDate;
+                    }
+                });
+
+                document.getElementById('adminStatUsers').textContent = users.length;
+                document.getElementById('adminStatAdmins').textContent = users.filter(u => u.role === 'admin').length;
+                document.getElementById('adminStatLogs').textContent = logs.length;
+                document.getElementById('adminStatReadyUnpaid').textContent = readyUnpaidCount;
+                document.getElementById('adminStatOpenRevenue').textContent = formatCurrency(openRevenueCents);
+                document.getElementById('adminStatCollectedRevenue').textContent = formatCurrency(collectedRevenueCents);
+
                 const uBody = document.getElementById('adminUsersTable');
-                uBody.innerHTML = users.map(u => `
+                if (users.length === 0) {
+                    uBody.innerHTML = `<tr><td colspan="10" class="text-center">No users found.</td></tr>`;
+                } else {
+                    uBody.innerHTML = users.map(u => {
+                        const userStats = logsByUserId.get(Number(u.id)) || { projects: 0, paidCents: 0, openCents: 0, lastActivity: null };
+                        return `
                     <tr>
                         <td>${u.id}</td>
                         <td>${u.name || 'N/A'}</td>
@@ -830,16 +924,35 @@
                                 ? `<span class="status-badge" style="background:#ccfbf1; color:#0f766e;">${u.subscription_status}</span>` 
                                 : '<span style="color:var(--muted); font-size:12px;">None</span>'}
                         </td>
-                        <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                        <td>${userStats.projects}</td>
+                        <td>
+                            ${formatCurrency(userStats.paidCents)}
+                            <br><span style="color:var(--muted); font-size:12px;">Open ${formatCurrency(userStats.openCents)}</span>
+                        </td>
+                        <td>${userStats.lastActivity ? formatShortDate(userStats.lastActivity) : '-'}</td>
+                        <td>${formatShortDate(u.created_at)}</td>
                     </tr>
-                `).join('');
+                `;
+                    }).join('');
+                }
 
                 const lBody = document.getElementById('adminLogsTable');
-                lBody.innerHTML = logs.map(l => `
+                if (logs.length === 0) {
+                    lBody.innerHTML = `<tr><td colspan="9" class="text-center">No projects found.</td></tr>`;
+                } else {
+                    lBody.innerHTML = logs.map(l => `
                     <tr>
                         <td>${l.id}</td>
-                        <td>${l.user_email}</td>
+                        <td>
+                            ${l.user_email}
+                            <br><span style="color:var(--muted); font-size:12px;">${l.user_name || '-'}</span>
+                        </td>
                         <td>${l.title}</td>
+                        <td>${(l.well_name || l.api_number) ? `${l.well_name || '-'}${l.api_number ? ` / ${l.api_number}` : ''}` : '-'}</td>
+                        <td>
+                            ${Number(l.footage) || 0} ft
+                            <br><span style="color:var(--muted); font-size:12px;">${Number(l.curves) || 1} curves | ${Number(l.num_logs) || 1} logs</span>
+                        </td>
                         <td>
                             <select onchange="updateLogStatus(${l.id}, this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--line); margin-bottom: 4px; display: block;">
                                 <option value="uploaded" ${l.status === 'uploaded' ? 'selected' : ''}>Uploaded</option>
@@ -850,6 +963,11 @@
                                 <option value="delivered" ${l.status === 'delivered' ? 'selected' : ''}>Delivered</option>
                             </select>
                             <input type="number" placeholder="Price (cents)" value="${l.amount_due || ''}" style="width: 90px; padding: 4px; font-size: 12px; border: 1px solid var(--line); border-radius: 4px;" onchange="updateLogAmount(${l.id}, this.value)" title="Amount Due in cents (e.g. 5000 for $50)" />
+                            <div style="color:var(--muted); font-size:12px; margin-top:4px;">${formatCurrency(l.amount_due)}</div>
+                        </td>
+                        <td>
+                            ${formatShortDate(l.created_at)}
+                            <br><span style="color:var(--muted); font-size:12px;">Updated ${formatShortDate(l.updated_at)}</span>
                         </td>
                         <td>
                             ${l.source_file_key || l.source_file_url
@@ -871,6 +989,7 @@
                         </td>
                     </tr>
                 `).join('');
+                }
             } catch (err) {
                 console.error('Failed to load admin data', err);
             }
