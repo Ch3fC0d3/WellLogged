@@ -4,6 +4,7 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const app = express();
 
 const authRoutes = require('./routes/auth');
@@ -23,10 +24,18 @@ app.use(express.urlencoded({ extended: true }));
 // CORS
 app.use(cors());
 
+const dataDir = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || __dirname);
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+const sessionDbPath = path.resolve(process.env.SESSION_DB_PATH || path.join(dataDir, 'sessions.db'));
+console.log(`[session] Using SQLite session store at: ${sessionDbPath}`);
+
 // Session Configuration
 app.set('trust proxy', 1); // Trust first proxy
 app.use(session({
-    store: new SQLiteStore({ db: 'sessions.db', dir: '.' }),
+    store: new SQLiteStore({
+        db: path.basename(sessionDbPath),
+        dir: path.dirname(sessionDbPath)
+    }),
     secret: process.env.SESSION_SECRET || 'secret_logdigitizing_key_123',
     resave: false,
     saveUninitialized: false,
