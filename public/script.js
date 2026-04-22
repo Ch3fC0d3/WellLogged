@@ -208,7 +208,7 @@ function updateCalculator() {
   if (calcMailto) {
     const subject = "Well log digitization estimate";
     const body = [
-      "Hello Well Logged,",
+      "Hello Log Digitizing,",
       "",
       "I would like a quote for a well log digitization project.",
       "",
@@ -225,7 +225,7 @@ function updateCalculator() {
       "Please let me know the next step.",
     ].join("\n");
 
-    calcMailto.href = `mailto:hello@welllogged.ai?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    calcMailto.href = `mailto:hello@logdigitizing.ai?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 }
 

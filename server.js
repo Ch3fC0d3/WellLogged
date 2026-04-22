@@ -27,7 +27,7 @@ app.use(cors());
 app.set('trust proxy', 1); // Trust first proxy
 app.use(session({
     store: new SQLiteStore({ db: 'sessions.db', dir: '.' }),
-    secret: process.env.SESSION_SECRET || 'secret_welllogged_key_123',
+    secret: process.env.SESSION_SECRET || 'secret_logdigitizing_key_123',
     resave: false,
     saveUninitialized: false,
     cookie: {
