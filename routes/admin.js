@@ -23,6 +23,24 @@ const multerStorage = multer.diskStorage({
 });
 const upload = multer({ storage: multerStorage, limits: { fileSize: 200 * 1024 * 1024 } });
 
+function getLocalUploadPath(keyOrUrl) {
+    if (!keyOrUrl) return null;
+
+    const basename = path.basename(keyOrUrl);
+    if (!basename || basename === '.' || basename === '..') return null;
+
+    const uploadRoot = path.resolve(uploadsDir);
+    const filePath = path.resolve(uploadRoot, basename);
+    const relativePath = path.relative(uploadRoot, filePath);
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) return null;
+
+    return filePath;
+}
+
+function attachmentName(keyOrUrl) {
+    return path.basename(keyOrUrl || 'source-file').replace(/"/g, '');
+}
+
 // Get all users
 router.get('/users', requireAdmin, (req, res) => {
     db.all(`
@@ -99,6 +117,52 @@ router.get('/logs', requireAdmin, (req, res) => {
         if (err) return res.status(500).json({ error: 'Database error' });
         res.json({ logs: rows });
     });
+});
+
+// Download the original user-submitted source file
+router.get('/logs/:id/source/download', requireAdmin, async (req, res) => {
+    const logId = req.params.id;
+
+    try {
+        const log = await new Promise((resolve, reject) => {
+            db.get(
+                `SELECT source_file_url, source_file_key FROM logs WHERE id = ?`,
+                [logId],
+                (err, row) => err ? reject(err) : resolve(row)
+            );
+        });
+
+        if (!log) return res.status(404).json({ error: 'Log not found' });
+
+        const sourceRef = log.source_file_key || log.source_file_url;
+        if (!sourceRef) return res.status(404).json({ error: 'Source file not found' });
+
+        if (storage.isUsingCloud && log.source_file_key && log.source_file_key.startsWith('logs/')) {
+            const filename = attachmentName(log.source_file_key);
+            const downloadUrl = await storage.getDownloadUrl(log.source_file_key, {
+                responseDisposition: `attachment; filename="${filename}"`
+            });
+            return res.redirect(downloadUrl);
+        }
+
+        if (/^https?:\/\//i.test(sourceRef)) {
+            return res.redirect(sourceRef);
+        }
+
+        const filePath = getLocalUploadPath(sourceRef);
+        if (!filePath || !fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Source file not found' });
+        }
+
+        return res.download(filePath, attachmentName(sourceRef), (err) => {
+            if (err && !res.headersSent) {
+                res.status(500).json({ error: 'File download failed' });
+            }
+        });
+    } catch (err) {
+        console.error('Source download failed:', err);
+        return res.status(500).json({ error: 'File download failed' });
+    }
 });
 
 // Update a log's status and output file

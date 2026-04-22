@@ -63,15 +63,19 @@ async function uploadFile(file) {
 /**
  * Get a signed URL for a stored file, valid for 1 hour. Local files return their path directly.
  */
-async function getDownloadUrl(key) {
+async function getDownloadUrl(key, options = {}) {
     if (!key) return null;
     if (bucket && key.startsWith('logs/')) {
-        const [signed] = await bucket.file(key).getSignedUrl({
+        const signedOptions = {
             version: 'v4', // Force v4 signing instead of deprecated v2
             action: 'read',
             expires: Date.now() + 60 * 60 * 1000, // 1 hour
             virtualHostedStyle: true // Vital for v4 signatures on some GCS endpoints
-        });
+        };
+        if (options.responseDisposition) {
+            signedOptions.responseDisposition = options.responseDisposition;
+        }
+        const [signed] = await bucket.file(key).getSignedUrl(signedOptions);
         return signed;
     }
     return key.startsWith('/') ? key : `/uploads/${key}`;

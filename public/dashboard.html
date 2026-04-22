@@ -376,6 +376,7 @@
                                 <th>User</th>
                                 <th>Project</th>
                                 <th>Status</th>
+                                <th>Source File</th>
                                 <th>Output File</th>
                             </tr>
                         </thead>
@@ -849,6 +850,14 @@
                                 <option value="delivered" ${l.status === 'delivered' ? 'selected' : ''}>Delivered</option>
                             </select>
                             <input type="number" placeholder="Price (cents)" value="${l.amount_due || ''}" style="width: 90px; padding: 4px; font-size: 12px; border: 1px solid var(--line); border-radius: 4px;" onchange="updateLogAmount(${l.id}, this.value)" title="Amount Due in cents (e.g. 5000 for $50)" />
+                        </td>
+                        <td>
+                            ${l.source_file_key || l.source_file_url
+                                ? `<a href="/api/admin/logs/${l.id}/source/download" target="_blank" rel="noopener" download class="btn btn-outline" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path></svg>
+                                    Download
+                                </a>`
+                                : '<span style="color:var(--muted); font-size:12px;">No file</span>'}
                         </td>
                         <td>
                             ${l.output_file_key 
