@@ -64,6 +64,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
             db.run(`ALTER TABLE logs ADD COLUMN output_file_key TEXT`, () => {});
             db.run(`ALTER TABLE logs ADD COLUMN amount_due INTEGER`, () => {});
 
+            // User preference columns
+            db.run(`ALTER TABLE users ADD COLUMN email_notifications INTEGER DEFAULT 1`, () => {});
+
             // Password reset token columns
             db.run(`ALTER TABLE users ADD COLUMN reset_token TEXT`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME`, () => {});

@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../db');
 const storage = require('../storage');
+const { sendEmail } = require('../email');
 const stripe = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_...' ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 const router = express.Router();
 
@@ -253,6 +254,23 @@ router.post('/logs/:id/output', requireAdmin, upload.single('file'), async (req,
                     return res.status(500).json({ error: 'Database error' });
                 }
                 res.json({ message: 'Output file uploaded successfully', url: uploadResult.url, key: uploadResult.key });
+
+                // Send Email Notification to User
+                db.get(`
+                    SELECT logs.title, users.email, users.name, users.email_notifications 
+                    FROM logs 
+                    JOIN users ON logs.user_id = users.id 
+                    WHERE logs.id = ?
+                `, [logId], (err, row) => {
+                    if (!err && row && row.email_notifications !== 0) {
+                        sendEmail({
+                            to: row.email,
+                            subject: `Project Ready: ${row.title}`,
+                            text: `Hi ${row.name || 'there'},\n\nYour project "${row.title}" has been successfully digitized and is ready for download!\n\nPlease log in to your dashboard to view and download your files.\n\nThank you,\nThe Log Digitizing Team`,
+                            html: `<p>Hi ${row.name || 'there'},</p><p>Your project "<strong>${row.title}</strong>" has been successfully digitized and is ready for download!</p><p>Please log in to your <a href="https://logdigitizing.ai/dashboard">dashboard</a> to view and download your files.</p><p>Thank you,<br>The Log Digitizing Team</p>`
+                        }).catch(e => console.error('Failed to send project ready email:', e));
+                    }
+                });
             }
         );
     } catch (err) {

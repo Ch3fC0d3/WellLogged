@@ -96,7 +96,7 @@ router.get('/me', (req, res) => {
     if (!req.session.userId) {
         return res.status(401).json({ error: 'Not authenticated' });
     }
-    db.get(`SELECT id, name, email, company, address, role FROM users WHERE id = ?`, [req.session.userId], (err, user) => {
+    db.get(`SELECT id, name, email, company, address, role, email_notifications FROM users WHERE id = ?`, [req.session.userId], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'User not found' });
         res.json({ user });
     });
@@ -106,11 +106,11 @@ router.put('/me', async (req, res) => {
     if (!req.session.userId) {
         return res.status(401).json({ error: 'Not authenticated' });
     }
-    const { name, email, company, address, password } = req.body;
+    const { name, email, company, address, password, email_notifications } = req.body;
     
     try {
-        let sql = `UPDATE users SET name = ?, email = ?, company = ?, address = ?`;
-        let params = [name, email, company || null, address || null];
+        let sql = `UPDATE users SET name = ?, email = ?, company = ?, address = ?, email_notifications = ?`;
+        let params = [name, email, company || null, address || null, email_notifications !== undefined ? email_notifications : 1];
         
         if (password) {
             const hash = await bcrypt.hash(password, 10);

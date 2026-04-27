@@ -5,6 +5,7 @@ const fs = require('fs');
 const bcrypt = require('bcrypt');
 const db = require('../db');
 const storage = require('../storage');
+const { sendEmail } = require('../email');
 const router = express.Router();
 
 const requireAuth = (req, res, next) => {
@@ -93,7 +94,30 @@ router.post('/public', upload.single('file'), async (req, res) => {
             );
         });
 
-        // 4. Ensure logged in and redirect
+        // 4. Send Confirmation Emails
+        const adminEmail = process.env.MAIL_FROM || 'admin@tiflas.com';
+        
+        // Notify Admin
+        sendEmail({
+            to: adminEmail,
+            subject: `New Project Submitted: ${title}`,
+            text: `A new project "${title}" was just submitted by user ${userId}.\nLog into the admin dashboard to review the files and set pricing.`,
+            html: `<p>A new project "<strong>${title}</strong>" was just submitted by user ${userId}.</p><p>Log into the <a href="https://logdigitizing.ai/dashboard">admin dashboard</a> to review the files and set pricing.</p>`
+        }).catch(err => console.error('Failed to email admin:', err));
+
+        // Notify User (if opted in)
+        db.get('SELECT email, name, email_notifications FROM users WHERE id = ?', [userId], (err, userRow) => {
+            if (!err && userRow && userRow.email_notifications !== 0) {
+                sendEmail({
+                    to: userRow.email,
+                    subject: `Project Received: ${title}`,
+                    text: `Hi ${userRow.name || 'there'},\n\nWe've successfully received your project "${title}".\nOur team will review your files shortly to verify the footage and curve counts, and then begin digitization.\n\nYou can track the status of your project at any time in your dashboard.\n\nThank you,\nThe Log Digitizing Team`,
+                    html: `<p>Hi ${userRow.name || 'there'},</p><p>We've successfully received your project "<strong>${title}</strong>".</p><p>Our team will review your files shortly to verify the footage and curve counts, and then begin digitization.</p><p>You can track the status of your project at any time in your <a href="https://logdigitizing.ai/dashboard">dashboard</a>.</p><p>Thank you,<br>The Log Digitizing Team</p>`
+                }).catch(err => console.error('Failed to email user:', err));
+            }
+        });
+
+        // 5. Ensure logged in and redirect
         req.session.userId = userId;
         req.session.save((err) => {
             if (err) console.error('Session save failed:', err);
@@ -196,7 +220,29 @@ router.post('/', requireAuth, upload.single('file'), async (req, res) => {
                 console.error('DB insert failed:', err);
                 return res.status(500).json({ error: 'Failed to create log' });
             }
-            res.status(201).json({ message: 'Log created', log: { id: this.lastID, title, status: 'uploaded' } });
+
+            const newLogId = this.lastID;
+            res.status(201).json({ message: 'Log created', log: { id: newLogId, title, status: 'uploaded' } });
+
+            // Send Emails
+            const adminEmail = process.env.MAIL_FROM || 'admin@tiflas.com';
+            sendEmail({
+                to: adminEmail,
+                subject: `New Project Submitted: ${title}`,
+                text: `A new project "${title}" was just submitted by user ${req.session.userId}.\nLog into the admin dashboard to review the files and set pricing.`,
+                html: `<p>A new project "<strong>${title}</strong>" was just submitted by user ${req.session.userId}.</p><p>Log into the <a href="https://logdigitizing.ai/dashboard">admin dashboard</a> to review the files and set pricing.</p>`
+            }).catch(e => console.error('Failed to email admin:', e));
+
+            db.get('SELECT email, name, email_notifications FROM users WHERE id = ?', [req.session.userId], (err, userRow) => {
+                if (!err && userRow && userRow.email_notifications !== 0) {
+                    sendEmail({
+                        to: userRow.email,
+                        subject: `Project Received: ${title}`,
+                        text: `Hi ${userRow.name || 'there'},\n\nWe've successfully received your project "${title}".\nOur team will review your files shortly to verify the footage and curve counts, and then begin digitization.\n\nYou can track the status of your project at any time in your dashboard.\n\nThank you,\nThe Log Digitizing Team`,
+                        html: `<p>Hi ${userRow.name || 'there'},</p><p>We've successfully received your project "<strong>${title}</strong>".</p><p>Our team will review your files shortly to verify the footage and curve counts, and then begin digitization.</p><p>You can track the status of your project at any time in your <a href="https://logdigitizing.ai/dashboard">dashboard</a>.</p><p>Thank you,<br>The Log Digitizing Team</p>`
+                    }).catch(e => console.error('Failed to email user:', e));
+                }
+            });
         }
     );
 });
