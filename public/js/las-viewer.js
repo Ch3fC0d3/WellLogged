@@ -45,18 +45,9 @@ window.LASViewer = {
                     }
                 }
             } else if (section === 'A') { // Ascii data
-                // Read the rest of the lines as data
-                for (let j = i; j < lines.length; j++) {
-                    const dataLine = lines[j].trim();
-                    if (!dataLine || dataLine.startsWith('#')) continue;
-                    if (dataLine.startsWith('~')) {
-                        i = j - 1; // Hand back control to outer loop if new section
-                        break;
-                    }
-                    const values = dataLine.split(/\s+/).map(Number);
-                    if (values.length > 0 && !isNaN(values[0])) {
-                        data.push(values);
-                    }
+                const values = line.split(/\s+/).filter(x => x !== '').map(Number);
+                if (values.length > 0 && !isNaN(values[0])) {
+                    data.push(values);
                 }
             }
         }
@@ -82,8 +73,14 @@ window.LASViewer = {
         const trackHeight = Math.min(800, Math.max(400, data.length * 2)); // Dynamic height based on data
 
         const depthCurve = data.map(d => d[0]);
-        const minDepth = Math.min(...depthCurve);
-        const maxDepth = Math.max(...depthCurve);
+        
+        // Manual min/max to avoid call stack size exceeded on large arrays
+        let minDepth = Infinity;
+        let maxDepth = -Infinity;
+        for (let j = 0; j < depthCurve.length; j++) {
+            if (depthCurve[j] < minDepth) minDepth = depthCurve[j];
+            if (depthCurve[j] > maxDepth) maxDepth = depthCurve[j];
+        }
 
         // Draw depth track
         const depthDiv = document.createElement('div');
@@ -143,8 +140,12 @@ window.LASViewer = {
             const values = data.map(d => d[i]).filter(v => v !== nullValue && !isNaN(v));
             if (values.length === 0) continue; // Skip empty curves
 
-            const minVal = Math.min(...values);
-            const maxVal = Math.max(...values);
+            let minVal = Infinity;
+            let maxVal = -Infinity;
+            for (let j = 0; j < values.length; j++) {
+                if (values[j] < minVal) minVal = values[j];
+                if (values[j] > maxVal) maxVal = values[j];
+            }
             // Add a little padding to min/max
             const padding = (maxVal - minVal) * 0.05 || 1; 
             const displayMin = minVal - padding;
