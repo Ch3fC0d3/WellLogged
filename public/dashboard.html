@@ -1002,21 +1002,27 @@
         }
 
         async function updateLogStatus(id, newStatus) {
-            await fetch(`/api/admin/logs/${id}`, {
+            const res = await fetch(`/api/admin/logs/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
             });
+            if (res.ok) {
+                loadAdminData(); // Refresh UI immediately
+            }
         }
 
         async function updateLogAmount(id, amountDueStr) {
             const amount_due = parseInt(amountDueStr, 10);
             if (isNaN(amount_due)) return;
-            await fetch(`/api/admin/logs/${id}`, {
+            const res = await fetch(`/api/admin/logs/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ amount_due })
             });
+            if (res.ok) {
+                loadAdminData(); // Refresh UI to show the new dollar amount immediately
+            }
         }
 
         async function uploadOutputFile(logId, input) {
