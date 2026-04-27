@@ -73,6 +73,36 @@
 
 
     </style>
+    <style>
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 18px !important;
+            transition: background-color 0.2s;
+        }
+        .sortable:hover {
+            background-color: var(--surface-soft);
+        }
+        .sortable::after {
+            content: '↕';
+            position: absolute;
+            right: 4px;
+            color: var(--muted);
+            font-size: 12px;
+            opacity: 0.3;
+        }
+        .sortable.sort-asc::after {
+            content: '↑';
+            opacity: 1;
+            color: var(--teal);
+        }
+        .sortable.sort-desc::after {
+            content: '↓';
+            opacity: 1;
+            color: var(--teal);
+        }
+    </style>
 </head>
 <body>
     <header class="dash-header">
@@ -387,18 +417,18 @@
                 <h3 style="margin-top: 30px;">All Platform Users</h3>
                 <div style="overflow-x: auto;">
                     <table class="logs-table">
-                        <thead>
+                        <thead id="adminUsersTableHead">
                             <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Stripe ID</th>
-                                <th>Subscription</th>
-                                <th>Projects</th>
-                                <th>Paid</th>
-                                <th>Last Project</th>
-                                <th>Joined</th>
+                                <th class="sortable" data-sort="id" onclick="handleAdminUsersSort('id')">ID</th>
+                                <th class="sortable" data-sort="name" onclick="handleAdminUsersSort('name')">Name</th>
+                                <th class="sortable" data-sort="email" onclick="handleAdminUsersSort('email')">Email</th>
+                                <th class="sortable" data-sort="role" onclick="handleAdminUsersSort('role')">Role</th>
+                                <th class="sortable" data-sort="stripe" onclick="handleAdminUsersSort('stripe')">Stripe ID</th>
+                                <th class="sortable" data-sort="sub" onclick="handleAdminUsersSort('sub')">Subscription</th>
+                                <th class="sortable" data-sort="projects" onclick="handleAdminUsersSort('projects')">Projects</th>
+                                <th class="sortable" data-sort="paid" onclick="handleAdminUsersSort('paid')">Paid</th>
+                                <th class="sortable" data-sort="last_activity" onclick="handleAdminUsersSort('last_activity')">Last Project</th>
+                                <th class="sortable" data-sort="joined" onclick="handleAdminUsersSort('joined')">Joined</th>
                             </tr>
                         </thead>
                         <tbody id="adminUsersTable"></tbody>
@@ -451,15 +481,15 @@
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="logs-table">
-                        <thead>
+                        <thead id="adminLogsTableHead">
                             <tr>
-                                <th>ID</th>
-                                <th>User</th>
-                                <th>Project</th>
-                                <th>Well / API</th>
-                                <th>Specs</th>
-                                <th>Status</th>
-                                <th>Created</th>
+                                <th class="sortable" data-sort="id" onclick="handleAdminLogsSort('id')">ID</th>
+                                <th class="sortable" data-sort="user" onclick="handleAdminLogsSort('user')">User</th>
+                                <th class="sortable" data-sort="project" onclick="handleAdminLogsSort('project')">Project</th>
+                                <th class="sortable" data-sort="well_api" onclick="handleAdminLogsSort('well_api')">Well / API</th>
+                                <th class="sortable" data-sort="footage" onclick="handleAdminLogsSort('footage')">Specs</th>
+                                <th class="sortable" data-sort="status" onclick="handleAdminLogsSort('status')">Status</th>
+                                <th class="sortable" data-sort="created_at" onclick="handleAdminLogsSort('created_at')">Created</th>
                                 <th>Source File</th>
                                 <th>Output File</th>
                             </tr>
@@ -893,6 +923,227 @@
         let adminLogFilterUserId = null;
         let adminLogFilterUserEmail = null;
 
+        let allAdminUsers = [];
+        let allAdminLogs = [];
+        let allAdminLogsByUserId = new Map();
+        
+        let adminUsersSortKey = 'id';
+        let adminUsersSortDesc = true;
+        let adminLogsSortKey = 'created_at';
+        let adminLogsSortDesc = true;
+
+        const formatCurrency = (cents) => {
+            const numericCents = Number(cents);
+            if (!Number.isFinite(numericCents)) return '$0.00';
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(numericCents / 100);
+        };
+
+        const formatShortDate = (value) => {
+            if (!value) return '-';
+            const d = new Date(value);
+            if (isNaN(d.getTime())) return '-';
+            return d.toLocaleDateString();
+        };
+
+        function handleAdminUsersSort(key) {
+            if (adminUsersSortKey === key) {
+                adminUsersSortDesc = !adminUsersSortDesc;
+            } else {
+                adminUsersSortKey = key;
+                adminUsersSortDesc = false; // Default to asc when clicking new column
+            }
+            renderAdminUsers();
+        }
+
+        function handleAdminLogsSort(key) {
+            if (adminLogsSortKey === key) {
+                adminLogsSortDesc = !adminLogsSortDesc;
+            } else {
+                adminLogsSortKey = key;
+                adminLogsSortDesc = false; // Default to asc
+            }
+            renderAdminLogs();
+        }
+
+        function renderAdminUsers() {
+            const uBody = document.getElementById('adminUsersTable');
+            if (allAdminUsers.length === 0) {
+                uBody.innerHTML = `<tr><td colspan="10" class="text-center">No users found.</td></tr>`;
+                return;
+            }
+
+            const sortedUsers = [...allAdminUsers].sort((a, b) => {
+                const statsA = allAdminLogsByUserId.get(Number(a.id)) || { projects: 0, paidCents: 0, openCents: 0, lastActivity: null };
+                const statsB = allAdminLogsByUserId.get(Number(b.id)) || { projects: 0, paidCents: 0, openCents: 0, lastActivity: null };
+
+                let valA, valB;
+                switch (adminUsersSortKey) {
+                    case 'id': valA = a.id; valB = b.id; break;
+                    case 'name': valA = (a.name || '').toLowerCase(); valB = (b.name || '').toLowerCase(); break;
+                    case 'email': valA = (a.email || '').toLowerCase(); valB = (b.email || '').toLowerCase(); break;
+                    case 'role': valA = (a.role || '').toLowerCase(); valB = (b.role || '').toLowerCase(); break;
+                    case 'stripe': valA = (a.stripe_customer_id || '').toLowerCase(); valB = (b.stripe_customer_id || '').toLowerCase(); break;
+                    case 'sub': valA = (a.subscription_status || '').toLowerCase(); valB = (b.subscription_status || '').toLowerCase(); break;
+                    case 'projects': valA = statsA.projects; valB = statsB.projects; break;
+                    case 'paid': valA = statsA.paidCents; valB = statsB.paidCents; break;
+                    case 'last_activity': valA = statsA.lastActivity ? new Date(statsA.lastActivity).getTime() : 0; valB = statsB.lastActivity ? new Date(statsB.lastActivity).getTime() : 0; break;
+                    case 'joined': valA = new Date(a.created_at).getTime(); valB = new Date(b.created_at).getTime(); break;
+                    default: valA = a.id; valB = b.id;
+                }
+
+                if (valA < valB) return adminUsersSortDesc ? 1 : -1;
+                if (valA > valB) return adminUsersSortDesc ? -1 : 1;
+                return 0;
+            });
+
+            // Update headers
+            document.querySelectorAll('#adminUsersTableHead th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.sort === adminUsersSortKey) {
+                    th.classList.add(adminUsersSortDesc ? 'sort-desc' : 'sort-asc');
+                }
+            });
+
+            uBody.innerHTML = sortedUsers.map(u => {
+                const userStats = allAdminLogsByUserId.get(Number(u.id)) || { projects: 0, paidCents: 0, openCents: 0, lastActivity: null };
+                return `
+                    <tr>
+                        <td>${u.id}</td>
+                        <td>${u.name || 'N/A'}</td>
+                        <td>
+                            <a href="#" onclick="openAdminUserDetail(${u.id}); return false;" style="color:var(--teal); text-decoration:none; font-weight:500;" title="View User Profile">${u.email}</a>
+                            <br><span style="color:var(--muted); font-size:12px;">${u.company || '-'}</span>
+                        </td>
+                        <td><span class="status-badge">${u.role}</span></td>
+                        <td>
+                            ${u.stripe_customer_id 
+                                ? `<a href="https://dashboard.stripe.com/customers/${u.stripe_customer_id}" target="_blank" style="color:var(--teal); font-size:12px; text-decoration:none;">${u.stripe_customer_id}</a>` 
+                                : '<span style="color:var(--muted); font-size:12px;">Not linked</span>'}
+                        </td>
+                        <td>
+                            ${u.subscription_status 
+                                ? `<span class="status-badge" style="background:#ccfbf1; color:#0f766e;">${u.subscription_status}</span>` 
+                                : '<span style="color:var(--muted); font-size:12px;">None</span>'}
+                        </td>
+                        <td>
+                            <a href="#" onclick="setAdminLogFilter(${u.id}, '${u.email}'); return false;" style="color:var(--teal); text-decoration:underline;">${userStats.projects}</a>
+                        </td>
+                        <td>
+                            ${formatCurrency(userStats.paidCents)}
+                            <br><span style="color:var(--muted); font-size:12px;">Open ${formatCurrency(userStats.openCents)}</span>
+                        </td>
+                        <td>${userStats.lastActivity ? formatShortDate(userStats.lastActivity) : '-'}</td>
+                        <td>${formatShortDate(u.created_at)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderAdminLogs() {
+            const filterInfoDiv = document.getElementById('adminLogsFilterInfo');
+            const filterNameSpan = document.getElementById('adminLogsFilterName');
+            
+            let filteredLogs = allAdminLogs;
+            if (adminLogFilterUserId) {
+                filteredLogs = allAdminLogs.filter(l => Number(l.user_id) === Number(adminLogFilterUserId));
+                filterNameSpan.textContent = adminLogFilterUserEmail;
+                filterInfoDiv.style.display = 'flex';
+            } else {
+                filterInfoDiv.style.display = 'none';
+            }
+
+            const lBody = document.getElementById('adminLogsTable');
+            if (filteredLogs.length === 0) {
+                lBody.innerHTML = `<tr><td colspan="9" class="text-center">${adminLogFilterUserId ? 'This user has no projects.' : 'No projects found.'}</td></tr>`;
+                return;
+            }
+
+            const sortedLogs = [...filteredLogs].sort((a, b) => {
+                let valA, valB;
+                switch (adminLogsSortKey) {
+                    case 'id': valA = a.id; valB = b.id; break;
+                    case 'user': valA = (a.user_email || '').toLowerCase(); valB = (b.user_email || '').toLowerCase(); break;
+                    case 'project': valA = (a.title || '').toLowerCase(); valB = (b.title || '').toLowerCase(); break;
+                    case 'well_api': valA = (a.well_name || a.api_number || '').toLowerCase(); valB = (b.well_name || b.api_number || '').toLowerCase(); break;
+                    case 'footage': valA = Number(a.footage) || 0; valB = Number(b.footage) || 0; break;
+                    case 'status': valA = (a.status || '').toLowerCase(); valB = (b.status || '').toLowerCase(); break;
+                    case 'created_at': valA = new Date(a.created_at).getTime(); valB = new Date(b.created_at).getTime(); break;
+                    default: valA = a.id; valB = b.id;
+                }
+
+                if (valA < valB) return adminLogsSortDesc ? 1 : -1;
+                if (valA > valB) return adminLogsSortDesc ? -1 : 1;
+                return 0;
+            });
+
+            // Update headers
+            document.querySelectorAll('#adminLogsTableHead th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.sort === adminLogsSortKey) {
+                    th.classList.add(adminLogsSortDesc ? 'sort-desc' : 'sort-asc');
+                }
+            });
+
+            lBody.innerHTML = sortedLogs.map(l => `
+                <tr>
+                    <td>${l.id}</td>
+                    <td>
+                        <a href="#" onclick="setAdminLogFilter(${l.user_id}, '${l.user_email}'); return false;" style="color:var(--teal); text-decoration:none;" title="Filter by user">${l.user_email}</a>
+                        <br><span style="color:var(--muted); font-size:12px;">${l.user_name || '-'}</span>
+                    </td>
+                    <td>${l.title}</td>
+                    <td>${(l.well_name || l.api_number) ? `${l.well_name || '-'}${l.api_number ? ` / ${l.api_number}` : ''}` : '-'}</td>
+                    <td>
+                        ${Number(l.footage) || 0} ft
+                        <br><span style="color:var(--muted); font-size:12px;">${Number(l.curves) || 1} curves | ${Number(l.num_logs) || 1} logs</span>
+                    </td>
+                    <td>
+                        <select onchange="updateLogStatus(${l.id}, this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--line); margin-bottom: 4px; display: block;">
+                            <option value="uploaded" ${l.status === 'uploaded' ? 'selected' : ''}>Uploaded</option>
+                            <option value="processing" ${l.status === 'processing' ? 'selected' : ''}>Processing</option>
+                            <option value="qa_review" ${l.status === 'qa_review' ? 'selected' : ''}>QA Review</option>
+                            <option value="ready_unpaid" ${l.status === 'ready_unpaid' ? 'selected' : ''}>Ready (Unpaid)</option>
+                            <option value="paid" ${l.status === 'paid' ? 'selected' : ''}>Paid</option>
+                            <option value="delivered" ${l.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                        </select>
+                        <input type="number" placeholder="Price (cents)" value="${l.amount_due || ''}" style="width: 90px; padding: 4px; font-size: 12px; border: 1px solid var(--line); border-radius: 4px;" onchange="updateLogAmount(${l.id}, this.value)" title="Amount Due in cents (e.g. 5000 for $50)" />
+                        <div style="color:var(--muted); font-size:12px; margin-top:4px;">${formatCurrency(l.amount_due)}</div>
+                    </td>
+                    <td>
+                        ${formatShortDate(l.created_at)}
+                        <br><span style="color:var(--muted); font-size:12px;">Updated ${formatShortDate(l.updated_at)}</span>
+                    </td>
+                    <td>
+                        ${l.source_file_key || l.source_file_url
+                            ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <a href="/api/admin/logs/${l.id}/source/download?preview=1" target="_blank" rel="noopener" class="btn btn-outline" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" title="View file">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                    View
+                                </a>
+                                <a href="/api/admin/logs/${l.id}/source/download" target="_blank" rel="noopener" download class="btn btn-outline" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" title="Download file">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path></svg>
+                                    Download
+                                </a>
+                            </div>`
+                            : '<span style="color:var(--muted); font-size:12px;">No file</span>'}
+                    </td>
+                    <td>
+                        ${l.output_file_key 
+                            ? '<span style="color:var(--teal); font-weight:600; font-size:12px;">&#10003; Delivered</span>' 
+                            : ''}
+                        <label class="btn btn-outline" style="padding:4px 10px; font-size:12px; cursor:pointer; display:inline-block;">
+                            ${l.output_file_key ? 'Replace' : 'Upload'}
+                            <input type="file" style="display:none;" onchange="uploadOutputFile(${l.id}, this)" accept=".las,.LAS,.pdf,.tiff,.tif,.png,.jpg,.jpeg,.zip">
+                        </label>
+                        <span id="adminUploadStatus_${l.id}" style="font-size:12px; margin-left:6px;"></span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
         async function openAdminUserDetail(userId) {
             document.getElementById('adminUserDetailModal').style.display = 'flex';
             
@@ -997,34 +1248,21 @@
                 const { users } = await resUsers.json();
                 const { logs } = await resLogs.json();
 
-                const formatCurrency = (cents) => {
-                    const numericCents = Number(cents);
-                    if (!Number.isFinite(numericCents)) return '$0.00';
-                    return new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: 'USD'
-                    }).format(numericCents / 100);
-                };
+                allAdminUsers = users;
+                allAdminLogs = logs;
+                allAdminLogsByUserId = new Map();
 
-                const formatShortDate = (value) => {
-                    if (!value) return '-';
-                    const d = new Date(value);
-                    if (isNaN(d.getTime())) return '-';
-                    return d.toLocaleDateString();
-                };
-
-                const logsByUserId = new Map();
                 let openRevenueCents = 0;
                 let collectedRevenueCents = 0;
                 let readyUnpaidCount = 0;
 
-                logs.forEach((log) => {
+                allAdminLogs.forEach((log) => {
                     const userId = Number(log.user_id);
-                    if (!logsByUserId.has(userId)) {
-                        logsByUserId.set(userId, { projects: 0, paidCents: 0, openCents: 0, lastActivity: null });
+                    if (!allAdminLogsByUserId.has(userId)) {
+                        allAdminLogsByUserId.set(userId, { projects: 0, paidCents: 0, openCents: 0, lastActivity: null });
                     }
 
-                    const stats = logsByUserId.get(userId);
+                    const stats = allAdminLogsByUserId.get(userId);
                     stats.projects += 1;
 
                     const amountDue = Number(log.amount_due);
@@ -1046,125 +1284,16 @@
                     }
                 });
 
-                document.getElementById('adminStatUsers').textContent = users.length;
-                document.getElementById('adminStatAdmins').textContent = users.filter(u => u.role === 'admin').length;
-                document.getElementById('adminStatLogs').textContent = logs.length;
+                document.getElementById('adminStatUsers').textContent = allAdminUsers.length;
+                document.getElementById('adminStatAdmins').textContent = allAdminUsers.filter(u => u.role === 'admin').length;
+                document.getElementById('adminStatLogs').textContent = allAdminLogs.length;
                 document.getElementById('adminStatReadyUnpaid').textContent = readyUnpaidCount;
                 document.getElementById('adminStatOpenRevenue').textContent = formatCurrency(openRevenueCents);
                 document.getElementById('adminStatCollectedRevenue').textContent = formatCurrency(collectedRevenueCents);
 
-                const uBody = document.getElementById('adminUsersTable');
-                if (users.length === 0) {
-                    uBody.innerHTML = `<tr><td colspan="10" class="text-center">No users found.</td></tr>`;
-                } else {
-                    uBody.innerHTML = users.map(u => {
-                        const userStats = logsByUserId.get(Number(u.id)) || { projects: 0, paidCents: 0, openCents: 0, lastActivity: null };
-                        return `
-                    <tr>
-                        <td>${u.id}</td>
-                        <td>${u.name || 'N/A'}</td>
-                        <td>
-                            <a href="#" onclick="openAdminUserDetail(${u.id}); return false;" style="color:var(--teal); text-decoration:none; font-weight:500;" title="View User Profile">${u.email}</a>
-                            <br><span style="color:var(--muted); font-size:12px;">${u.company || '-'}</span>
-                        </td>
-                        <td><span class="status-badge">${u.role}</span></td>
-                        <td>
-                            ${u.stripe_customer_id 
-                                ? `<a href="https://dashboard.stripe.com/customers/${u.stripe_customer_id}" target="_blank" style="color:var(--teal); font-size:12px; text-decoration:none;">${u.stripe_customer_id}</a>` 
-                                : '<span style="color:var(--muted); font-size:12px;">Not linked</span>'}
-                        </td>
-                        <td>
-                            ${u.subscription_status 
-                                ? `<span class="status-badge" style="background:#ccfbf1; color:#0f766e;">${u.subscription_status}</span>` 
-                                : '<span style="color:var(--muted); font-size:12px;">None</span>'}
-                        </td>
-                        <td>
-                            <a href="#" onclick="setAdminLogFilter(${u.id}, '${u.email}'); return false;" style="color:var(--teal); text-decoration:underline;">${userStats.projects}</a>
-                        </td>
-                        <td>
-                            ${formatCurrency(userStats.paidCents)}
-                            <br><span style="color:var(--muted); font-size:12px;">Open ${formatCurrency(userStats.openCents)}</span>
-                        </td>
-                        <td>${userStats.lastActivity ? formatShortDate(userStats.lastActivity) : '-'}</td>
-                        <td>${formatShortDate(u.created_at)}</td>
-                    </tr>
-                `;
-                    }).join('');
-                }
-
-                // Apply log filters
-                const filterInfoDiv = document.getElementById('adminLogsFilterInfo');
-                const filterNameSpan = document.getElementById('adminLogsFilterName');
+                renderAdminUsers();
+                renderAdminLogs();
                 
-                let filteredLogs = logs;
-                if (adminLogFilterUserId) {
-                    filteredLogs = logs.filter(l => Number(l.user_id) === Number(adminLogFilterUserId));
-                    filterNameSpan.textContent = adminLogFilterUserEmail;
-                    filterInfoDiv.style.display = 'flex';
-                } else {
-                    filterInfoDiv.style.display = 'none';
-                }
-
-                const lBody = document.getElementById('adminLogsTable');
-                if (filteredLogs.length === 0) {
-                    lBody.innerHTML = `<tr><td colspan="9" class="text-center">${adminLogFilterUserId ? 'This user has no projects.' : 'No projects found.'}</td></tr>`;
-                } else {
-                    lBody.innerHTML = filteredLogs.map(l => `
-                    <tr>
-                        <td>${l.id}</td>
-                        <td>
-                            <a href="#" onclick="setAdminLogFilter(${l.user_id}, '${l.user_email}'); return false;" style="color:var(--teal); text-decoration:none;" title="Filter by user">${l.user_email}</a>
-                            <br><span style="color:var(--muted); font-size:12px;">${l.user_name || '-'}</span>
-                        </td>
-                        <td>${l.title}</td>
-                        <td>${(l.well_name || l.api_number) ? `${l.well_name || '-'}${l.api_number ? ` / ${l.api_number}` : ''}` : '-'}</td>
-                        <td>
-                            ${Number(l.footage) || 0} ft
-                            <br><span style="color:var(--muted); font-size:12px;">${Number(l.curves) || 1} curves | ${Number(l.num_logs) || 1} logs</span>
-                        </td>
-                        <td>
-                            <select onchange="updateLogStatus(${l.id}, this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--line); margin-bottom: 4px; display: block;">
-                                <option value="uploaded" ${l.status === 'uploaded' ? 'selected' : ''}>Uploaded</option>
-                                <option value="processing" ${l.status === 'processing' ? 'selected' : ''}>Processing</option>
-                                <option value="qa_review" ${l.status === 'qa_review' ? 'selected' : ''}>QA Review</option>
-                                <option value="ready_unpaid" ${l.status === 'ready_unpaid' ? 'selected' : ''}>Ready (Unpaid)</option>
-                                <option value="paid" ${l.status === 'paid' ? 'selected' : ''}>Paid</option>
-                                <option value="delivered" ${l.status === 'delivered' ? 'selected' : ''}>Delivered</option>
-                            </select>
-                            <input type="number" placeholder="Price (cents)" value="${l.amount_due || ''}" style="width: 90px; padding: 4px; font-size: 12px; border: 1px solid var(--line); border-radius: 4px;" onchange="updateLogAmount(${l.id}, this.value)" title="Amount Due in cents (e.g. 5000 for $50)" />
-                            <div style="color:var(--muted); font-size:12px; margin-top:4px;">${formatCurrency(l.amount_due)}</div>
-                        </td>
-                        <td>
-                            ${formatShortDate(l.created_at)}
-                            <br><span style="color:var(--muted); font-size:12px;">Updated ${formatShortDate(l.updated_at)}</span>
-                        </td>
-                        <td>
-                            ${l.source_file_key || l.source_file_url
-                                ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                    <a href="/api/admin/logs/${l.id}/source/download?preview=1" target="_blank" rel="noopener" class="btn btn-outline" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" title="View file">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                        View
-                                    </a>
-                                    <a href="/api/admin/logs/${l.id}/source/download" target="_blank" rel="noopener" download class="btn btn-outline" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" title="Download file">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path></svg>
-                                        Download
-                                    </a>
-                                </div>`
-                                : '<span style="color:var(--muted); font-size:12px;">No file</span>'}
-                        </td>
-                        <td>
-                            ${l.output_file_key 
-                                ? '<span style="color:var(--teal); font-weight:600; font-size:12px;">&#10003; Delivered</span>' 
-                                : ''}
-                            <label class="btn btn-outline" style="padding:4px 10px; font-size:12px; cursor:pointer; display:inline-block;">
-                                ${l.output_file_key ? 'Replace' : 'Upload'}
-                                <input type="file" style="display:none;" onchange="uploadOutputFile(${l.id}, this)" accept=".las,.LAS,.pdf,.tiff,.tif,.png,.jpg,.jpeg,.zip">
-                            </label>
-                            <span id="adminUploadStatus_${l.id}" style="font-size:12px; margin-left:6px;"></span>
-                        </td>
-                    </tr>
-                `).join('');
-                }
             } catch (err) {
                 console.error('Failed to load admin data', err);
             }
