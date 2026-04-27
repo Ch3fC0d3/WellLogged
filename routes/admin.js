@@ -8,10 +8,16 @@ const stripe = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !=
 const router = express.Router();
 
 const requireAdmin = (req, res, next) => {
-    if (!req.session.userId || req.session.role !== 'admin') {
+    if (!req.session.userId) {
         return res.status(403).json({ error: 'Forbidden: Admins only' });
     }
-    next();
+    // Verify admin role directly from DB to avoid stale session cache
+    db.get('SELECT role FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+        if (err || !user || user.role !== 'admin') {
+            return res.status(403).json({ error: 'Forbidden: Admins only' });
+        }
+        next();
+    });
 };
 
 // Multer setup for admin uploads
