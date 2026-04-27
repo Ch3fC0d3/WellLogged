@@ -103,6 +103,8 @@
             color: var(--teal);
         }
     </style>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="/js/las-viewer.js"></script>
 </head>
 <body>
     <header class="dash-header">
@@ -776,14 +778,16 @@
                 } else if (ext === 'pdf') {
                     container.innerHTML = `<iframe src="${fileUrl}" style="width:100%; height:600px; border:none; border-radius:6px;" title="PDF preview"></iframe>`;
                 } else if (['las','LAS'].includes(ext) || ext === 'las') {
-                    container.innerHTML = `
-                        <div style="padding:40px 20px;">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            <p style="margin:0; font-weight:600;">LAS file ready</p>
-                            <p style="margin:6px 0 0; color: var(--muted); font-size:14px;">Click Download to save the file.</p>
-                        </div>`;
+                    // We render the custom LAS Viewer here
+                    // Give it a fixed height or min height to look good
+                    container.style.minHeight = '400px';
+                    container.style.padding = '0';
+                    container.style.overflow = 'hidden';
+                    if (window.LASViewer) {
+                        window.LASViewer.loadAndRender(fileUrl, container);
+                    } else {
+                        container.innerHTML = `<div style="padding: 20px;">LAS Viewer not loaded. <a href="${fileUrl}" target="_blank">Download here</a></div>`;
+                    }
                 } else if (['tif','tiff'].includes(ext)) {
                     container.innerHTML = `
                         <div style="padding:40px 20px;">
