@@ -971,10 +971,16 @@
                         </td>
                         <td>
                             ${l.source_file_key || l.source_file_url
-                                ? `<a href="/api/admin/logs/${l.id}/source/download" target="_blank" rel="noopener" download class="btn btn-outline" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path></svg>
-                                    Download
-                                </a>`
+                                ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                    <a href="/api/admin/logs/${l.id}/source/download?preview=1" target="_blank" rel="noopener" class="btn btn-outline" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" title="View file">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                        View
+                                    </a>
+                                    <a href="/api/admin/logs/${l.id}/source/download" target="_blank" rel="noopener" download class="btn btn-outline" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" title="Download file">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path></svg>
+                                        Download
+                                    </a>
+                                </div>`
                                 : '<span style="color:var(--muted); font-size:12px;">No file</span>'}
                         </td>
                         <td>

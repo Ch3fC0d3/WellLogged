@@ -225,7 +225,7 @@ function updateCalculator() {
       "Please let me know the next step.",
     ].join("\n");
 
-    calcMailto.href = `mailto:hello@logdigitizing.ai?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    calcMailto.href = `mailto:admin@tiflas.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 }
 

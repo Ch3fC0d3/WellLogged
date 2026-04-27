@@ -119,9 +119,10 @@ router.get('/logs', requireAdmin, (req, res) => {
     });
 });
 
-// Download the original user-submitted source file
+// Download (or preview) the original user-submitted source file
 router.get('/logs/:id/source/download', requireAdmin, async (req, res) => {
     const logId = req.params.id;
+    const isPreview = req.query.preview === '1';
 
     try {
         const log = await new Promise((resolve, reject) => {
@@ -137,21 +138,32 @@ router.get('/logs/:id/source/download', requireAdmin, async (req, res) => {
         const sourceRef = log.source_file_key || log.source_file_url;
         if (!sourceRef) return res.status(404).json({ error: 'Source file not found' });
 
+        // Cloud Storage (GCS): generate signed URL with appropriate disposition
         if (storage.isUsingCloud && log.source_file_key && log.source_file_key.startsWith('logs/')) {
             const filename = attachmentName(log.source_file_key);
-            const downloadUrl = await storage.getDownloadUrl(log.source_file_key, {
+            const downloadUrl = await storage.getDownloadUrl(log.source_file_key, isPreview ? undefined : {
                 responseDisposition: `attachment; filename="${filename}"`
             });
             return res.redirect(downloadUrl);
         }
 
+        // External URL: redirect as-is
         if (/^https?:\/\//i.test(sourceRef)) {
             return res.redirect(sourceRef);
         }
 
+        // Local file: serve inline or download
         const filePath = getLocalUploadPath(sourceRef);
         if (!filePath || !fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'Source file not found' });
+        }
+
+        if (isPreview) {
+            return res.sendFile(filePath, (err) => {
+                if (err && !res.headersSent) {
+                    res.status(500).json({ error: 'File preview failed' });
+                }
+            });
         }
 
         return res.download(filePath, attachmentName(sourceRef), (err) => {
