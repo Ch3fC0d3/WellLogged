@@ -397,7 +397,13 @@
                     </table>
                 </div>
 
-                <h3 style="margin-top: 40px;">All Platform Logs</h3>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-top: 40px; margin-bottom: 10px;">
+                    <h3 id="adminLogsHeader" style="margin: 0;">All Platform Logs</h3>
+                    <div id="adminLogsFilterInfo" style="display: none; align-items:center; gap: 10px;">
+                        <span style="font-size:14px; font-weight:600; color:var(--teal);">Filtered to: <span id="adminLogsFilterName"></span></span>
+                        <button onclick="clearAdminLogFilter()" class="btn btn-outline" style="padding: 4px 8px; font-size:12px;">Clear Filter</button>
+                    </div>
+                </div>
                 <div style="overflow-x: auto;">
                     <table class="logs-table">
                         <thead>
@@ -836,6 +842,23 @@
             }
         }
 
+        let adminLogFilterUserId = null;
+        let adminLogFilterUserEmail = null;
+
+        function setAdminLogFilter(userId, userEmail) {
+            adminLogFilterUserId = userId;
+            adminLogFilterUserEmail = userEmail;
+            loadAdminData();
+            // Scroll down to the logs table
+            document.getElementById('adminLogsHeader').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearAdminLogFilter() {
+            adminLogFilterUserId = null;
+            adminLogFilterUserEmail = null;
+            loadAdminData();
+        }
+
         async function loadAdminData() {
             try {
                 const [resUsers, resLogs] = await Promise.all([
@@ -912,7 +935,10 @@
                     <tr>
                         <td>${u.id}</td>
                         <td>${u.name || 'N/A'}</td>
-                        <td>${u.email}<br><span style="color:var(--muted); font-size:12px;">${u.company || '-'}</span></td>
+                        <td>
+                            <a href="#" onclick="setAdminLogFilter(${u.id}, '${u.email}'); return false;" style="color:var(--teal); text-decoration:none; font-weight:500;" title="View all logs for this user">${u.email}</a>
+                            <br><span style="color:var(--muted); font-size:12px;">${u.company || '-'}</span>
+                        </td>
                         <td><span class="status-badge">${u.role}</span></td>
                         <td>
                             ${u.stripe_customer_id 
@@ -924,7 +950,9 @@
                                 ? `<span class="status-badge" style="background:#ccfbf1; color:#0f766e;">${u.subscription_status}</span>` 
                                 : '<span style="color:var(--muted); font-size:12px;">None</span>'}
                         </td>
-                        <td>${userStats.projects}</td>
+                        <td>
+                            <a href="#" onclick="setAdminLogFilter(${u.id}, '${u.email}'); return false;" style="color:var(--teal); text-decoration:underline;">${userStats.projects}</a>
+                        </td>
                         <td>
                             ${formatCurrency(userStats.paidCents)}
                             <br><span style="color:var(--muted); font-size:12px;">Open ${formatCurrency(userStats.openCents)}</span>
@@ -936,15 +964,28 @@
                     }).join('');
                 }
 
-                const lBody = document.getElementById('adminLogsTable');
-                if (logs.length === 0) {
-                    lBody.innerHTML = `<tr><td colspan="9" class="text-center">No projects found.</td></tr>`;
+                // Apply log filters
+                const filterInfoDiv = document.getElementById('adminLogsFilterInfo');
+                const filterNameSpan = document.getElementById('adminLogsFilterName');
+                
+                let filteredLogs = logs;
+                if (adminLogFilterUserId) {
+                    filteredLogs = logs.filter(l => Number(l.user_id) === Number(adminLogFilterUserId));
+                    filterNameSpan.textContent = adminLogFilterUserEmail;
+                    filterInfoDiv.style.display = 'flex';
                 } else {
-                    lBody.innerHTML = logs.map(l => `
+                    filterInfoDiv.style.display = 'none';
+                }
+
+                const lBody = document.getElementById('adminLogsTable');
+                if (filteredLogs.length === 0) {
+                    lBody.innerHTML = `<tr><td colspan="9" class="text-center">${adminLogFilterUserId ? 'This user has no projects.' : 'No projects found.'}</td></tr>`;
+                } else {
+                    lBody.innerHTML = filteredLogs.map(l => `
                     <tr>
                         <td>${l.id}</td>
                         <td>
-                            ${l.user_email}
+                            <a href="#" onclick="setAdminLogFilter(${l.user_id}, '${l.user_email}'); return false;" style="color:var(--teal); text-decoration:none;" title="Filter by user">${l.user_email}</a>
                             <br><span style="color:var(--muted); font-size:12px;">${l.user_name || '-'}</span>
                         </td>
                         <td>${l.title}</td>
