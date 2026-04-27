@@ -9,14 +9,28 @@ const stripe = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !=
 const router = express.Router();
 
 const requireAdmin = (req, res, next) => {
+    console.log(`[requireAdmin] Endpoint: ${req.method} ${req.url}`);
+    console.log(`[requireAdmin] Session ID: ${req.sessionID}, UserID: ${req.session.userId}`);
+    
     if (!req.session.userId) {
+        console.log(`[requireAdmin] Rejected: No req.session.userId`);
         return res.status(403).json({ error: 'Forbidden: Admins only' });
     }
     // Verify admin role directly from DB to avoid stale session cache
     db.get('SELECT role FROM users WHERE id = ?', [req.session.userId], (err, user) => {
-        if (err || !user || user.role !== 'admin') {
+        if (err) {
+            console.log(`[requireAdmin] Rejected: DB error: ${err}`);
             return res.status(403).json({ error: 'Forbidden: Admins only' });
         }
+        if (!user) {
+            console.log(`[requireAdmin] Rejected: User not found in DB`);
+            return res.status(403).json({ error: 'Forbidden: Admins only' });
+        }
+        if (user.role !== 'admin') {
+            console.log(`[requireAdmin] Rejected: User role is ${user.role}, not admin`);
+            return res.status(403).json({ error: 'Forbidden: Admins only' });
+        }
+        console.log(`[requireAdmin] Accepted: User ${user.email} is admin`);
         next();
     });
 };
