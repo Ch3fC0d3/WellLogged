@@ -1,5 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const { sendEmail } = require('../email');
 const stripe = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_...' ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 const db = require('../db');
 const router = express.Router();
@@ -89,6 +91,59 @@ router.post('/logout', (req, res) => {
         if (err) return res.status(500).json({ error: 'Failed to logout' });
         res.clearCookie('connect.sid');
         res.json({ message: 'Logged out successfully' });
+    });
+});
+
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    db.get(`SELECT id, name FROM users WHERE email = ?`, [email], (err, user) => {
+        if (err || !user) {
+            // Send success anyway to prevent email enumeration
+            return res.json({ message: 'If an account exists with that email, a reset link was sent.' });
+        }
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiry = new Date(Date.now() + 3600000); // 1 hour
+
+        db.run(`UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?`, [token, expiry.toISOString(), user.id], (err) => {
+            if (err) {
+                console.error('Failed to save reset token:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            const resetLink = `${req.protocol}://${req.get('host')}/reset-password.html?token=${token}`;
+            
+            sendEmail({
+                to: email,
+                subject: 'Log Digitizing - Password Reset Request',
+                text: `Hi ${user.name || 'there'},\n\nYou requested a password reset. Click the link below to set a new password:\n${resetLink}\n\nIf you didn't request this, you can safely ignore this email. The link will expire in 1 hour.\n\nThank you,\nThe Log Digitizing Team`,
+                html: `<p>Hi ${user.name || 'there'},</p><p>You requested a password reset. Click the link below to set a new password:</p><p><a href="${resetLink}">${resetLink}</a></p><p>If you didn't request this, you can safely ignore this email. The link will expire in 1 hour.</p><p>Thank you,<br>The Log Digitizing Team</p>`
+            }).catch(e => console.error('Failed to send reset email:', e));
+
+            res.json({ message: 'If an account exists with that email, a reset link was sent.' });
+        });
+    });
+});
+
+router.post('/reset-password', async (req, res) => {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'Token and new password are required' });
+
+    db.get(`SELECT id FROM users WHERE reset_token = ? AND reset_token_expiry > CURRENT_TIMESTAMP`, [token], async (err, user) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        if (!user) return res.status(400).json({ error: 'Invalid or expired reset link. Please request a new one.' });
+
+        try {
+            const hash = await bcrypt.hash(password, 10);
+            db.run(`UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?`, [hash, user.id], (err) => {
+                if (err) return res.status(500).json({ error: 'Database error' });
+                res.json({ message: 'Password updated successfully. You can now log in.' });
+            });
+        } catch (e) {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     });
 });
 
