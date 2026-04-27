@@ -60,6 +60,40 @@ router.get('/users', requireAdmin, (req, res) => {
     });
 });
 
+// Get specific user details, including billing
+router.get('/users/:id', requireAdmin, async (req, res) => {
+    const userId = req.params.id;
+    try {
+        const user = await new Promise((resolve, reject) => {
+            db.get(`SELECT id, name, email, company, address, role, created_at, stripe_customer_id FROM users WHERE id = ?`, [userId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const subscription = await new Promise((resolve, reject) => {
+            db.get(`SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`, [userId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row || null);
+            });
+        });
+
+        const invoices = await new Promise((resolve, reject) => {
+            db.all(`SELECT * FROM invoices WHERE user_id = ? ORDER BY created_at DESC`, [userId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+
+        res.json({ user, subscription, invoices });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // Sync Stripe Data
 router.post('/sync-stripe', requireAdmin, async (req, res) => {
     if (!stripe) return res.status(400).json({ error: 'Stripe is not configured properly' });
