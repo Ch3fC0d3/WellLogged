@@ -3,12 +3,12 @@ const { sendEmail } = require('./email');
 
 (async () => {
     try {
-        const to = process.env.TEST_EMAIL_TO || 'hello@logdigitizing.ai';
+        const to = 'gabriel@pellegrini.us';
         await sendEmail({
             to,
-            subject: 'Test Email from Log Digitizing',
-            text: 'This is a test email from the Log Digitizing platform. If you received this, the email system is working correctly.',
-            html: `<p>This is a test email from the <strong>Log Digitizing</strong> platform.</p><p>If you received this, the email system is working correctly.</p>`,
+            subject: 'New Project Submitted: Smith Well #1',
+            text: 'Hello Admin,\n\nA new project was just submitted by a user on Log Digitizing.\nPlease review it in the dashboard.',
+            html: `<p>Hello Admin,</p><p>A new project was just submitted by a user on <strong>Log Digitizing</strong>.</p><p>Please review it in the dashboard.</p>`,
         });
         console.log(`Test email sent successfully to ${to}`);
         process.exit(0);

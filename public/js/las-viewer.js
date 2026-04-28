@@ -17,31 +17,40 @@ window.LASViewer = {
             }
 
             if (section === 'W') { // Well info
-                // Example: STRT .M     1000.0 : Start depth
-                const match = line.match(/^([^.]+)\.(.*?):\s*(.*)$/);
-                if (match) {
-                    const key = match[1].trim();
-                    // Some values have units and data mixed, e.g. "STRT  .FT   100.0  : Start depth"
-                    // Wait, standard LAS is mnemonic.unit data : description
-                    // We split at colon, then regex the left side
-                    const left = line.split(':')[0];
-                    const leftMatch = left.match(/^([A-Za-z0-9_]+)\s*\.(.*?)\s+(.*)$/);
-                    if (leftMatch) {
-                        wellInfo[leftMatch[1].trim()] = leftMatch[3].trim();
-                    } else if (match) {
-                        wellInfo[key] = match[2].trim();
+                const parts = line.split(':');
+                if (parts.length >= 2) {
+                    const left = parts[0];
+                    const dotIndex = left.indexOf('.');
+                    if (dotIndex > 0) {
+                        const key = left.substring(0, dotIndex).trim();
+                        let rest = left.substring(dotIndex + 1).trim();
+                        // unit and data are separated by the first space
+                        const spaceIndex = rest.indexOf(' ');
+                        if (spaceIndex > -1) {
+                            wellInfo[key] = rest.substring(spaceIndex + 1).trim();
+                        } else {
+                            // no space? then it's just the unit or data
+                            wellInfo[key] = rest;
+                        }
+                        
+                        // Special handling for NULL since it might have no unit but leading spaces are eaten
+                        if (key === 'NULL' && spaceIndex === -1) {
+                            wellInfo[key] = rest;
+                        }
                     }
                 }
             } else if (section === 'C') { // Curve info
                 const parts = line.split(':');
                 if (parts.length >= 2) {
-                    const leftMatch = parts[0].match(/^([A-Za-z0-9_]+)\s*\.(.*)$/);
-                    if (leftMatch) {
-                        const name = leftMatch[1].trim();
+                    const leftSide = parts[0];
+                    const dotIndex = leftSide.indexOf('.');
+                    if (dotIndex > 0) {
+                        const name = leftSide.substring(0, dotIndex).trim();
+                        const rest = leftSide.substring(dotIndex + 1).trim();
                         // unit and curve data can be separated by space
-                        const unitAndData = leftMatch[2].trim().split(/\s+/);
+                        const unitAndData = rest.split(/\s+/);
                         const unit = unitAndData[0] || '';
-                        curves.push({ name: name, unit: unit, description: parts[1].trim() });
+                        curves.push({ name: name, unit: unit, description: parts.slice(1).join(':').trim() });
                     }
                 }
             } else if (section === 'A') { // Ascii data

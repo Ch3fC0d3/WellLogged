@@ -105,6 +105,16 @@
     </style>
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/js/las-viewer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.min.js"></script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KLDD07ZC9X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-KLDD07ZC9X');
+</script>
 </head>
 <body>
     <header class="dash-header">
@@ -772,7 +782,8 @@
                 downloadBtn.href = fileUrl;
                 downloadBtn.style.display = 'inline-block';
 
-                const ext = (fileKey || fileUrl || '').toLowerCase().split('.').pop();
+                const pathString = (fileKey || fileUrl || '').split('?')[0];
+                const ext = pathString.toLowerCase().split('.').pop();
                 if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) {
                     container.innerHTML = `<img src="${fileUrl}" alt="Preview" style="max-width:100%; max-height:600px; border-radius:6px;" />`;
                 } else if (ext === 'pdf') {
@@ -789,14 +800,46 @@
                         container.innerHTML = `<div style="padding: 20px;">LAS Viewer not loaded. <a href="${fileUrl}" target="_blank">Download here</a></div>`;
                     }
                 } else if (['tif','tiff'].includes(ext)) {
-                    container.innerHTML = `
-                        <div style="padding:40px 20px;">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            <p style="margin:0; font-weight:600;">TIFF file uploaded</p>
-                            <p style="margin:6px 0 0; color: var(--muted); font-size:14px;">Click Download to view.</p>
-                        </div>`;
+                    container.innerHTML = '<div style="padding:40px 20px; text-align:center;"><span style="color: var(--muted);">Loading TIFF preview...</span></div>';
+                    
+                    fetch(fileUrl)
+                        .then(res => {
+                            if (!res.ok) throw new Error('Network response was not ok');
+                            return res.arrayBuffer();
+                        })
+                        .then(buffer => {
+                            if (typeof window.UTIF === 'undefined') throw new Error('UTIF library not loaded');
+                            const ifds = UTIF.decode(buffer);
+                            UTIF.decodeImage(buffer, ifds[0]);
+                            const tiffWidth = ifds[0].width;
+                            const tiffHeight = ifds[0].height;
+                            const rgba = UTIF.toRGBA8(ifds[0]); // Uint8Array
+                            
+                            const canvas = document.createElement('canvas');
+                            canvas.width = tiffWidth;
+                            canvas.height = tiffHeight;
+                            canvas.style.maxWidth = '100%';
+                            canvas.style.maxHeight = '600px';
+                            canvas.style.borderRadius = '6px';
+                            
+                            const ctx = canvas.getContext('2d');
+                            const imageData = new ImageData(new Uint8ClampedArray(rgba), tiffWidth, tiffHeight);
+                            ctx.putImageData(imageData, 0, 0);
+                            
+                            container.innerHTML = '';
+                            container.appendChild(canvas);
+                        })
+                        .catch(err => {
+                            console.error('TIFF render error:', err);
+                            container.innerHTML = `
+                                <div style="padding:40px 20px;">
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <p style="margin:0; font-weight:600;">TIFF file uploaded</p>
+                                    <p style="margin:6px 0 0; color: var(--muted); font-size:14px;">Preview not available. Click Download to view.</p>
+                                </div>`;
+                        });
                 } else {
                     container.innerHTML = `
                         <div style="padding:40px 20px;">
@@ -822,9 +865,26 @@
             const outputDownloadBtn = document.getElementById('detailOutputDownload');
             
             const urlParams = new URLSearchParams(window.location.search);
-            const isWaitingForWebhook = urlParams.has('session_id') && log.status === 'ready_unpaid';
+            const sessionId = urlParams.get('session_id');
+            const isWaitingForWebhook = !!sessionId && log.status === 'ready_unpaid';
             
-            if (log.status === 'ready_unpaid') {
+            if (isWaitingForWebhook) {
+                // Manually verify session to bypass missing webhooks in dev
+                fetch(`/api/billing/checkout/session/${sessionId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.payment_status === 'paid') {
+                            // Strip session_id from URL so we don't keep checking
+                            const url = new URL(window.location);
+                            url.searchParams.delete('session_id');
+                            window.history.replaceState({}, '', url);
+                            loadLogDetail(log.id); // reload the log to show the file
+                        }
+                    })
+                    .catch(err => console.error('Verification error:', err));
+            }
+
+            if (log.status === 'ready_unpaid' && (!currentUser || currentUser.role !== 'admin')) {
                 outputDownloadBtn.style.display = 'none';
                 outputPreviewContainer.style.background = 'var(--surface)';
                 outputPreviewContainer.style.border = '2px dashed var(--teal)';
@@ -862,7 +922,7 @@
                         ` : `<button class="btn" disabled style="width:100%; opacity:0.5;">Pricing pending...</button>`)}
                     </div>
                 `;
-            } else if (['paid', 'delivered'].includes(log.status)) {
+            } else if (['paid', 'delivered', 'ready_unpaid'].includes(log.status) && log.output_file_url) {
                 outputPreviewContainer.style.background = '#fff';
                 outputPreviewContainer.style.border = '1px solid var(--line)';
                 renderPreview(
@@ -1601,3 +1661,4 @@
     </script>
 </body>
 </html>
+

@@ -12,6 +12,8 @@ const transporter = nodemailer.createTransport({
         user: process.env.MAIL_USERNAME || process.env.SMTP_USER,
         pass: process.env.MAIL_PASSWORD || process.env.SMTP_PASS,
     },
+    debug: true,
+    logger: true
 });
 
 async function sendEmail({ to, subject, text, html, attachments = [] }) {

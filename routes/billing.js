@@ -110,4 +110,31 @@ router.post('/checkout/log/:id', requireAuth, async (req, res) => {
     }
 });
 
+// Verify Checkout Session (Manual fallback for when webhook is missed or delayed)
+router.get('/checkout/session/:session_id', requireAuth, async (req, res) => {
+    try {
+        const session = await stripe.checkout.sessions.retrieve(req.params.session_id);
+        if (!session) return res.status(404).json({ error: 'Session not found' });
+
+        if (session.payment_status === 'paid' && session.metadata && session.metadata.logId) {
+            const logId = session.metadata.logId;
+            const userId = req.session.userId;
+            
+            // Mark log as paid if it isn't already
+            db.run(`UPDATE logs SET status = 'paid', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND status != 'paid'`, [logId, userId], function(err) {
+                if (err) console.error('Failed to update log status manually:', err);
+            });
+            
+            // Link customer ID if needed
+            if (session.customer) {
+                db.run(`UPDATE users SET stripe_customer_id = ? WHERE id = ? AND stripe_customer_id IS NULL`, [session.customer, userId]);
+            }
+        }
+        res.json({ payment_status: session.payment_status, status: session.status });
+    } catch (error) {
+        console.error('Error verifying session:', error);
+        res.status(500).json({ error: 'Failed to verify session' });
+    }
+});
+
 module.exports = router;
