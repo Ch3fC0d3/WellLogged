@@ -910,12 +910,18 @@ h1 {
 
 .preview-image {
   width: 100%;
-  height: auto;
-  max-height: 260px;
+  height: 280px;
   object-fit: contain;
   border-radius: 6px;
   border: 1px solid var(--line);
   background: #fff;
+}
+
+.preview-caption {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
 }
 
 .paper-log,
