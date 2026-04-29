@@ -926,6 +926,7 @@
                 // Defensive: Never show download for ready_unpaid unless admin
                 if (log.status === 'ready_unpaid' && (!currentUser || currentUser.role !== 'admin')) {
                     outputDownloadBtn.style.display = 'none';
+                    outputDownloadBtn.href = '#';
                     outputPreviewContainer.style.background = 'var(--surface)';
                     outputPreviewContainer.style.border = '2px dashed var(--teal)';
                     outputPreviewContainer.innerHTML = `
