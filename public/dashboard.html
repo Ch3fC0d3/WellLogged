@@ -876,6 +876,34 @@
             outputDownloadBtn.style.display = 'none';
             outputDownloadBtn.href = '#';
 
+            if (sessionId) {
+                if (log.status === 'paid' || log.status === 'delivered') {
+                    // Already paid via webhook, just clean URL
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('session_id');
+                    window.history.replaceState({}, '', url);
+                } else if (log.status === 'ready_unpaid') {
+                    // Poll or verify session directly
+                    fetch(`/api/billing/checkout/session/${sessionId}`)
+                        .then(res => {
+                            if (!res.ok) throw new Error('Failed to verify');
+                            return res.json();
+                        })
+                        .then(sessionData => {
+                            if (sessionData.payment_status === 'paid') {
+                                // Update local state and reload
+                                log.status = 'paid';
+                                // Clean URL
+                                const url = new URL(window.location.href);
+                                url.searchParams.delete('session_id');
+                                window.history.replaceState({}, '', url);
+                                loadLogDetail(log.id); // reload the log to show the file
+                            }
+                        })
+                        .catch(err => console.error('Verification error:', err));
+                }
+            }
+
             if (log.status === 'ready_unpaid') {
                 const isAdmin = currentUser && currentUser.role === 'admin';
                 
