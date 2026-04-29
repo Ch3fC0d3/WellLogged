@@ -306,6 +306,7 @@
                             <span>Edited / Deliverable</span>
                             <a id="detailOutputDownload" href="#" target="_blank" rel="noopener" class="btn" style="display:none; text-decoration:none; font-size:13px; padding:6px 12px;">Download</a>
                         </h3>
+                        <div id="detailOutputPaywall" style="display:none; margin-top:12px; background:var(--surface); border:2px dashed var(--teal); border-radius:8px; padding:20px; text-align:center;"></div>
                         <div id="detailOutputPreview" style="margin-top:12px; text-align:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px; min-height:200px; display:flex; align-items:center; justify-content:center;">
                             <span style="color: var(--muted);">Not yet available</span>
                         </div>
@@ -862,40 +863,31 @@
 
             // Output / deliverable file
             const outputPreviewContainer = document.getElementById('detailOutputPreview');
+            const outputPaywallContainer = document.getElementById('detailOutputPaywall');
             const outputDownloadBtn = document.getElementById('detailOutputDownload');
             
             const urlParams = new URLSearchParams(window.location.search);
             const sessionId = urlParams.get('session_id');
-            const isWaitingForWebhook = !!sessionId && log.status === 'ready_unpaid';
-            
-            if (isWaitingForWebhook) {
-                // Manually verify session to bypass missing webhooks in dev
-                fetch(`/api/billing/checkout/session/${sessionId}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.payment_status === 'paid') {
-                            // Strip session_id from URL so we don't keep checking
-                            const url = new URL(window.location);
-                            url.searchParams.delete('session_id');
-                            window.history.replaceState({}, '', url);
-                            loadLogDetail(log.id); // reload the log to show the file
-                        }
-                    })
-                    .catch(err => console.error('Verification error:', err));
-            }
+            const isWaitingForWebhook = sessionId && log.status === 'ready_unpaid';
 
-            if (log.status === 'ready_unpaid' && (!currentUser || currentUser.role !== 'admin')) {
-                outputDownloadBtn.style.display = 'none';
-                outputPreviewContainer.style.background = 'var(--surface)';
-                outputPreviewContainer.style.border = '2px dashed var(--teal)';
-                outputPreviewContainer.innerHTML = `
-                    <div style="padding:20px; text-align:center; width:100%;">
+            // Reset containers
+            outputPreviewContainer.style.display = 'none';
+            outputPaywallContainer.style.display = 'none';
+            outputDownloadBtn.style.display = 'none';
+            outputDownloadBtn.href = '#';
+
+            if (log.status === 'ready_unpaid') {
+                const isAdmin = currentUser && currentUser.role === 'admin';
+                
+                // Show paywall content for everyone (admins see it so they can test/see price)
+                outputPaywallContainer.style.display = 'block';
+                outputPaywallContainer.innerHTML = `
+                    <div style="width:100%;">
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         <h2 style="margin:0 0 10px; font-size:20px; color: var(--text);">Your digitized log is ready</h2>
                         <p style="margin:0 0 20px; color: var(--muted); font-size:14px;">Preview available. Full download unlocks after payment.</p>
-                        
                         <div style="background:var(--surface-soft); border-radius:6px; padding:15px; margin-bottom:24px; text-align:left;">
                             <p style="margin:0 0 8px; font-size:14px;"><strong>Depth Range:</strong> ${log.footage || 0} feet</p>
                             <p style="margin:0 0 8px; font-size:14px;"><strong>Curves Extracted:</strong> ${log.curves || 1}</p>
@@ -922,38 +914,35 @@
                         ` : `<button class="btn" disabled style="width:100%; opacity:0.5;">Pricing pending...</button>`)}
                     </div>
                 `;
-            } else if (['paid', 'delivered', 'ready_unpaid'].includes(log.status) && log.output_file_url) {
-                // Defensive: Never show download for ready_unpaid unless admin
-                if (log.status === 'ready_unpaid' && (!currentUser || currentUser.role !== 'admin')) {
-                    outputDownloadBtn.style.display = 'none';
-                    outputDownloadBtn.href = '#';
-                    outputPreviewContainer.style.background = 'var(--surface)';
-                    outputPreviewContainer.style.border = '2px dashed var(--teal)';
-                    outputPreviewContainer.innerHTML = `
-                        <div style="padding:20px; text-align:center; width:100%;">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--teal); margin-bottom:12px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <h2 style="margin:0 0 10px; font-size:20px; color: var(--text);">Your digitized log is ready</h2>
-                            <p style="margin:0 0 20px; color: var(--muted); font-size:14px;">Complete payment to unlock your files.</p>
-                            ${log.amount_due ? `<button onclick="startCheckout(${log.id})" class="btn" style="width:100%; padding:14px; font-size:16px; display:flex; justify-content:center; gap:8px;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                                Pay ${formatCurrency(log.amount_due)} to Download
-                            </button>` : `<button class="btn" disabled style="width:100%; opacity:0.5;">Pricing pending...</button>`}
-                        </div>
-                    `;
-                } else {
+
+                // ONLY if the user is an admin DO we also show the preview content (without a download button)
+                if (isAdmin && log.output_file_url) {
+                    outputPreviewContainer.style.display = 'flex';
                     outputPreviewContainer.style.background = '#fff';
                     outputPreviewContainer.style.border = '1px solid var(--line)';
+                    // We render it but explicitly hide the download button
                     renderPreview(
                         outputPreviewContainer,
-                        outputDownloadBtn,
+                        outputDownloadBtn, // Pass it, but then hide it immediately
                         log.output_download_url || log.output_file_url,
                         log.output_file_key || log.output_file_url
                     );
+                    // FORCE hide the download button since it's unpaid
+                    outputDownloadBtn.style.display = 'none';
+                    outputDownloadBtn.href = '#';
                 }
+            } else if (['paid', 'delivered'].includes(log.status) && log.output_file_url) {
+                outputPreviewContainer.style.display = 'flex';
+                outputPreviewContainer.style.background = '#fff';
+                outputPreviewContainer.style.border = '1px solid var(--line)';
+                renderPreview(
+                    outputPreviewContainer,
+                    outputDownloadBtn,
+                    log.output_download_url || log.output_file_url,
+                    log.output_file_key || log.output_file_url
+                );
             } else {
-                outputDownloadBtn.style.display = 'none';
+                outputPreviewContainer.style.display = 'flex';
                 outputPreviewContainer.style.background = '#fff';
                 outputPreviewContainer.style.border = '1px solid var(--line)';
                 outputPreviewContainer.innerHTML = `
