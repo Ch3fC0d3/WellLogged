@@ -897,6 +897,7 @@ h1 {
 
 .preview-column {
   min-width: 0;
+  overflow: hidden;
 }
 
 .preview-column span {
@@ -909,12 +910,15 @@ h1 {
 }
 
 .preview-image {
-  width: 100%;
-  height: 280px;
-  object-fit: contain;
+  width: 120%;
+  height: 320px;
+  object-fit: cover;
+  object-position: center;
   border-radius: 6px;
   border: 1px solid var(--line);
   background: #fff;
+  display: block;
+  margin-left: -10%;
 }
 
 .preview-caption {
