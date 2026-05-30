@@ -176,6 +176,34 @@ router.post('/test-email', requireAdmin, async (req, res) => {
     }
 });
 
+// List notifications + unread count (admin only).
+router.get('/notifications', requireAdmin, (req, res) => {
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    db.all(`SELECT * FROM notifications ORDER BY created_at DESC LIMIT ?`, [limit], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        db.get(`SELECT COUNT(*) AS unread FROM notifications WHERE is_read = 0`, (err2, row) => {
+            if (err2) return res.status(500).json({ error: 'Database error' });
+            res.json({ notifications: rows || [], unread: row ? row.unread : 0 });
+        });
+    });
+});
+
+// Mark notifications as read. Pass { id } for one, or omit to mark all read.
+router.post('/notifications/read', requireAdmin, (req, res) => {
+    const { id } = req.body || {};
+    if (id) {
+        db.run(`UPDATE notifications SET is_read = 1 WHERE id = ?`, [id], (err) => {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            res.json({ message: 'Notification marked read.' });
+        });
+    } else {
+        db.run(`UPDATE notifications SET is_read = 1 WHERE is_read = 0`, [], (err) => {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            res.json({ message: 'All notifications marked read.' });
+        });
+    }
+});
+
 // Sync Stripe Data
 router.post('/sync-stripe', requireAdmin, async (req, res) => {
     if (!stripe) return res.status(400).json({ error: 'Stripe is not configured properly' });
@@ -303,13 +331,35 @@ router.get('/logs/:id/source/download', requireAdmin, async (req, res) => {
 router.patch('/logs/:id', requireAdmin, (req, res) => {
     const logId = req.params.id;
     const { status, output_file_url, amount_due } = req.body;
-    
+
     db.run(
         `UPDATE logs SET status = COALESCE(?, status), output_file_url = COALESCE(?, output_file_url), amount_due = COALESCE(?, amount_due), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         [status, output_file_url, amount_due, logId],
         function(err) {
             if (err) return res.status(500).json({ error: 'Database error' });
             res.json({ message: 'Log updated successfully' });
+
+            // If the admin set/changed the price, notify the user.
+            if (this.changes > 0 && amount_due != null) {
+                db.get(`
+                    SELECT logs.title, logs.status AS log_status, users.email, users.name, users.email_notifications
+                    FROM logs
+                    JOIN users ON logs.user_id = users.id
+                    WHERE logs.id = ?
+                `, [logId], (err2, row) => {
+                    if (err2 || !row || row.email_notifications === 0) return;
+                    const priceDollars = (amount_due / 100).toFixed(2);
+                    const subject = row.log_status === 'ready_unpaid'
+                        ? `Project Ready: ${row.title} – Payment Due: $${priceDollars}`
+                        : `Price Updated: ${row.title} – New Amount: $${priceDollars}`;
+                    sendEmail({
+                        to: row.email,
+                        subject: subject,
+                        text: `Hi ${row.name || 'there'},\n\nYour project "${row.title}" has been updated with a new price of $${priceDollars}.\n\n${row.log_status === 'ready_unpaid' ? 'It is now ready for payment. ' : ''}You can log in to your dashboard to review and complete payment at any time.\n\nThank you,\nThe Log Digitizing Team`,
+                        html: `<p>Hi ${row.name || 'there'},</p><p>Your project "<strong>${row.title}</strong>" has been updated with a new price of <strong>$${priceDollars}</strong>.</p>${row.log_status === 'ready_unpaid' ? '<p>It is now ready for payment.</p>' : ''}<p>You can log in to your <a href="https://logdigitizing.ai/dashboard">dashboard</a> to review and complete payment at any time.</p><p>Thank you,<br>The Log Digitizing Team</p>`
+                    }).catch(e => console.error('Failed to send price-update email:', e));
+                });
+            }
         }
     );
 });

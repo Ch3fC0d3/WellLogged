@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { sendEmail } = require('../email');
+const { createNotification } = require('../notifications');
 const stripe = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_...' ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 const db = require('../db');
 const router = express.Router();
@@ -44,6 +45,14 @@ router.post('/signup', async (req, res) => {
                 return res.status(500).json({ error: 'Database error' });
             }
             
+            // Notify admin of the new signup (in-app)
+            createNotification({
+                type: 'signup',
+                message: `New user signed up: ${email}${company ? ` (${company})` : ''}`,
+                link: '/dashboard/admin',
+                relatedId: this.lastID
+            });
+
             // Login user after signup
             req.session.userId = this.lastID;
             req.session.email = email;

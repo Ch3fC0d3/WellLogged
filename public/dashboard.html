@@ -395,6 +395,22 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 20px;">
                     <h1 style="margin: 0;">Admin Panel</h1>
                     <div style="display:flex; gap:10px; align-items:center;">
+                        <div style="position:relative;">
+                            <button id="adminNotifBtn" class="btn btn-outline" style="display:flex; gap:8px; align-items:center; position:relative;" onclick="toggleNotifications()">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                Alerts
+                                <span id="adminNotifBadge" style="display:none; position:absolute; top:-6px; right:-6px; background:#ef4444; color:#fff; border-radius:10px; min-width:18px; height:18px; font-size:11px; line-height:18px; text-align:center; padding:0 5px; font-weight:700;">0</span>
+                            </button>
+                            <div id="adminNotifPanel" style="display:none; position:absolute; right:0; top:46px; width:340px; max-height:420px; overflow-y:auto; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.12); z-index:10000;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--line);">
+                                    <strong style="font-size:14px;">Notifications</strong>
+                                    <button onclick="markAllNotificationsRead()" class="btn btn-outline" style="padding:3px 8px; font-size:12px;">Mark all read</button>
+                                </div>
+                                <div id="adminNotifList" style="padding:4px 0;">
+                                    <div style="padding:14px; color:var(--muted); font-size:13px;">Loading...</div>
+                                </div>
+                            </div>
+                        </div>
                         <button id="adminTestEmailBtn" class="btn btn-outline" style="display: flex; gap: 8px; align-items: center;" onclick="sendTestEmail(this)">
                             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                             Send Test Email
@@ -1434,11 +1450,92 @@
 
                 renderAdminUsers();
                 renderAdminLogs();
-                
+
+                loadNotifications();
+                startNotificationPolling();
+
             } catch (err) {
                 console.error('Failed to load admin data', err);
             }
         }
+
+        let notifPollTimer = null;
+        function startNotificationPolling() {
+            if (notifPollTimer) return; // already polling
+            notifPollTimer = setInterval(loadNotifications, 30000); // every 30s
+        }
+
+        async function loadNotifications() {
+            try {
+                const res = await fetch('/api/admin/notifications');
+                if (!res.ok) return;
+                const { notifications, unread } = await res.json();
+
+                const badge = document.getElementById('adminNotifBadge');
+                if (unread > 0) {
+                    badge.textContent = unread > 99 ? '99+' : unread;
+                    badge.style.display = 'block';
+                } else {
+                    badge.style.display = 'none';
+                }
+
+                const list = document.getElementById('adminNotifList');
+                if (!notifications.length) {
+                    list.innerHTML = '<div style="padding:14px; color:var(--muted); font-size:13px;">No notifications yet.</div>';
+                    return;
+                }
+                list.innerHTML = notifications.map(n => {
+                    const when = new Date(n.created_at).toLocaleString();
+                    const unreadStyle = n.is_read ? '' : 'background:#f0fdfa;';
+                    return `
+                        <div style="padding:10px 14px; border-bottom:1px solid var(--line); ${unreadStyle}">
+                            <div style="font-size:13px; color:var(--text);">${escapeHtml(n.message)}</div>
+                            <div style="font-size:11px; color:var(--muted); margin-top:3px;">${when}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error('Failed to load notifications', err);
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function toggleNotifications() {
+            const panel = document.getElementById('adminNotifPanel');
+            const isOpen = panel.style.display === 'block';
+            panel.style.display = isOpen ? 'none' : 'block';
+            if (!isOpen) {
+                loadNotifications();
+                // Opening the panel marks everything as read.
+                markAllNotificationsRead(true);
+            }
+        }
+
+        async function markAllNotificationsRead(silent) {
+            try {
+                await fetch('/api/admin/notifications/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                document.getElementById('adminNotifBadge').style.display = 'none';
+                if (!silent) loadNotifications();
+            } catch (err) {
+                console.error('Failed to mark notifications read', err);
+            }
+        }
+
+        // Close the notification panel when clicking outside of it.
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('adminNotifPanel');
+            const btn = document.getElementById('adminNotifBtn');
+            if (panel && panel.style.display === 'block' && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
+                panel.style.display = 'none';
+            }
+        });
 
         async function updateLogStatus(id, newStatus) {
             const res = await fetch(`/api/admin/logs/${id}`, {

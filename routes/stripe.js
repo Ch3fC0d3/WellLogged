@@ -1,6 +1,7 @@
 const express = require('express');
 const stripe = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_...' ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 const db = require('../db');
+const { createNotification } = require('../notifications');
 const router = express.Router();
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -60,9 +61,21 @@ function handleLogCheckoutSuccess(session) {
     const customerId = session.customer;
 
     // Update log status to paid
-    db.run(`UPDATE logs SET status = 'paid', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`, [logId, userId], (err) => {
-        if (err) console.error('Failed to update log to paid:', err);
-        else console.log(`Log ${logId} marked as paid.`);
+    db.run(`UPDATE logs SET status = 'paid', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`, [logId, userId], function (err) {
+        if (err) {
+            console.error('Failed to update log to paid:', err);
+        } else {
+            console.log(`Log ${logId} marked as paid.`);
+            if (this.changes > 0) {
+                const amount = session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : 'payment';
+                createNotification({
+                    type: 'payment',
+                    message: `Payment received (${amount}) for log #${logId} from user #${userId}`,
+                    link: '/dashboard/admin',
+                    relatedId: parseInt(logId)
+                });
+            }
+        }
     });
 
     // Make sure user has the customer ID saved

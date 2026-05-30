@@ -87,6 +87,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 )
             `);
 
+            // Admin notifications table
+            db.run(`
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    link TEXT,
+                    related_id INTEGER,
+                    is_read INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
             // Subscriptions table
             db.run(`
                 CREATE TABLE IF NOT EXISTS subscriptions (

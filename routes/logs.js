@@ -6,6 +6,8 @@ const bcrypt = require('bcrypt');
 const db = require('../db');
 const storage = require('../storage');
 const { sendEmail } = require('../email');
+const { createNotification } = require('../notifications');
+const { calculateAmountDueCents } = require('../pricing');
 const router = express.Router();
 
 const requireAuth = (req, res, next) => {
@@ -73,11 +75,12 @@ router.post('/public', upload.single('file'), async (req, res) => {
         // 2. Upload file to GCS
         const uploadResult = await storage.uploadFile(req.file);
 
-        // 3. Create log project
+        // 3. Create log project (pre-populate amount_due from the quote estimate)
+        const estimatedAmountDue = calculateAmountDueCents({ numLogs: num_logs, curves, footage });
         await new Promise((resolve, reject) => {
             db.run(
-                `INSERT INTO logs (user_id, title, well_name, api_number, footage, num_logs, curves, notes, source_file_url, source_file_key)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO logs (user_id, title, well_name, api_number, footage, num_logs, curves, notes, source_file_url, source_file_key, amount_due)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     userId,
                     title,
@@ -88,7 +91,8 @@ router.post('/public', upload.single('file'), async (req, res) => {
                     parseInt(curves) || 1,
                     notes || '',
                     uploadResult.url,
-                    uploadResult.key
+                    uploadResult.key,
+                    estimatedAmountDue
                 ],
                 function (err) { err ? reject(err) : resolve(); }
             );
@@ -97,7 +101,13 @@ router.post('/public', upload.single('file'), async (req, res) => {
         // 4. Send Confirmation Emails
         const adminEmail = process.env.MAIL_FROM || 'admin@tiflas.com';
         
-        // Notify Admin
+        // Notify Admin (in-app + email)
+        createNotification({
+            type: 'order',
+            message: `New project submitted: "${title}" (user #${userId})`,
+            link: '/dashboard/admin',
+            relatedId: userId
+        });
         sendEmail({
             to: adminEmail,
             subject: `New Project Submitted: ${title}`,
@@ -200,9 +210,10 @@ router.post('/', requireAuth, upload.single('file'), async (req, res) => {
         return res.status(500).json({ error: 'File upload failed. Please try again.' });
     }
 
+    const estimatedAmountDue = calculateAmountDueCents({ numLogs: num_logs, curves, footage });
     db.run(
-        `INSERT INTO logs (user_id, title, well_name, api_number, footage, num_logs, curves, notes, source_file_url, source_file_key)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO logs (user_id, title, well_name, api_number, footage, num_logs, curves, notes, source_file_url, source_file_key, amount_due)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             req.session.userId,
             title,
@@ -213,7 +224,8 @@ router.post('/', requireAuth, upload.single('file'), async (req, res) => {
             parseInt(curves) || 1,
             notes || '',
             uploadResult.url,
-            uploadResult.key
+            uploadResult.key,
+            estimatedAmountDue
         ],
         function (err) {
             if (err) {
@@ -223,6 +235,14 @@ router.post('/', requireAuth, upload.single('file'), async (req, res) => {
 
             const newLogId = this.lastID;
             res.status(201).json({ message: 'Log created', log: { id: newLogId, title, status: 'uploaded' } });
+
+            // Notify Admin (in-app + email)
+            createNotification({
+                type: 'order',
+                message: `New project submitted: "${title}" (user #${req.session.userId})`,
+                link: '/dashboard/admin',
+                relatedId: newLogId
+            });
 
             // Send Emails
             const adminEmail = process.env.MAIL_FROM || 'admin@tiflas.com';
