@@ -16,10 +16,21 @@ const transporter = nodemailer.createTransport({
     logger: true
 });
 
-async function sendEmail({ to, subject, text, html, attachments = [] }) {
+async function sendEmail({ to, subject, text, html, attachments = [], bcc }) {
+    // Always blind-copy the configured monitoring address (if set), plus any
+    // per-call bcc recipients. Deduplicated so no address is copied twice.
+    const bccList = new Set();
+    if (process.env.MAIL_BCC) {
+        process.env.MAIL_BCC.split(',').map(a => a.trim()).filter(Boolean).forEach(a => bccList.add(a));
+    }
+    if (bcc) {
+        (Array.isArray(bcc) ? bcc : [bcc]).filter(Boolean).forEach(a => bccList.add(a));
+    }
+
     const info = await transporter.sendMail({
         from: process.env.MAIL_FROM || process.env.FROM_EMAIL || process.env.SMTP_USER || 'noreply@logdigitizing.ai',
         to,
+        bcc: bccList.size ? Array.from(bccList).join(', ') : undefined,
         subject,
         text,
         html,

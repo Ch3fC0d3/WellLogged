@@ -394,10 +394,16 @@
             <div id="adminView" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 20px;">
                     <h1 style="margin: 0;">Admin Panel</h1>
-                    <button id="adminSyncStripeBtn" class="btn" style="display: flex; gap: 8px; align-items: center;" onclick="syncStripeData(this)">
-                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        Sync Stripe Data
-                    </button>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button id="adminTestEmailBtn" class="btn btn-outline" style="display: flex; gap: 8px; align-items: center;" onclick="sendTestEmail(this)">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                            Send Test Email
+                        </button>
+                        <button id="adminSyncStripeBtn" class="btn" style="display: flex; gap: 8px; align-items: center;" onclick="syncStripeData(this)">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Sync Stripe Data
+                        </button>
+                    </div>
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-top:22px;">
@@ -479,7 +485,8 @@
                         <ul id="audInvoicesList" style="list-style:none; padding:0; margin:0 0 30px 0;">
                         </ul>
 
-                        <div style="text-align:right;">
+                        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                            <button onclick="resetUserPasswordFromModal()" class="btn btn-outline">Reset Password</button>
                             <button onclick="filterLogsFromModal()" class="btn">View All Projects for User</button>
                         </div>
                     </div>
@@ -1329,6 +1336,35 @@
             if (uid && email) setAdminLogFilter(uid, email);
         }
 
+        async function resetUserPasswordFromModal() {
+            const modal = document.getElementById('adminUserDetailModal');
+            const uid = modal.dataset.userId;
+            const email = modal.dataset.userEmail;
+            if (!uid) return;
+
+            const custom = prompt(`Reset password for ${email}.\n\nEnter a new password (min 8 chars), or leave blank to auto-generate a secure one:`);
+            if (custom === null) return; // cancelled
+
+            const body = custom.trim() ? { password: custom.trim() } : {};
+            try {
+                const res = await fetch(`/api/admin/users/${uid}/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to reset password');
+
+                if (data.password) {
+                    alert(`Password reset for ${email}.\n\nTemporary password: ${data.password}\n\nCopy this now and share it securely with the user. It will not be shown again.`);
+                } else {
+                    alert(`Password reset successfully for ${email}.`);
+                }
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+
         function setAdminLogFilter(userId, userEmail) {
             adminLogFilterUserId = userId;
             adminLogFilterUserEmail = userEmail;
@@ -1488,6 +1524,34 @@
             } catch (err) {
                 statusEl.textContent = 'Network error';
                 statusEl.style.color = '#ef4444';
+            }
+        }
+
+        async function sendTestEmail(btn) {
+            const to = prompt('Send a test email to which address?\n\nLeave blank to send to your own admin email. A copy also goes to any BCC monitoring address.');
+            if (to === null) return; // cancelled
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Sending...';
+            btn.disabled = true;
+            try {
+                const body = to.trim() ? { to: to.trim() } : {};
+                const res = await fetch('/api/admin/test-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message || 'Test email sent.');
+                } else {
+                    alert(data.error || 'Failed to send test email.');
+                }
+            } catch (err) {
+                alert('Network error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
 

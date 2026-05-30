@@ -2,6 +2,8 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const db = require('../db');
 const storage = require('../storage');
 const { sendEmail } = require('../email');
@@ -106,6 +108,71 @@ router.get('/users/:id', requireAdmin, async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Reset a user's password (admin only).
+// If no password is provided in the body, a secure random one is generated and returned.
+router.post('/users/:id/reset-password', requireAdmin, async (req, res) => {
+    const userId = req.params.id;
+    let { password } = req.body || {};
+
+    try {
+        // Generate a strong temporary password when one isn't supplied.
+        const generated = !password;
+        if (generated) {
+            password = crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+        } else if (typeof password !== 'string' || password.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+        }
+
+        const hash = await bcrypt.hash(password, 10);
+        db.run(
+            `UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [hash, userId],
+            function (err) {
+                if (err) return res.status(500).json({ error: 'Database error' });
+                if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+
+                // Only return the plaintext password when we generated it, so the admin can relay it.
+                res.json({
+                    message: 'Password reset successfully.',
+                    password: generated ? password : undefined
+                });
+            }
+        );
+    } catch (e) {
+        console.error('Admin password reset failed:', e);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Send a test email to verify SMTP configuration (admin only).
+router.post('/test-email', requireAdmin, async (req, res) => {
+    let { to } = req.body || {};
+    const fromAddress = process.env.MAIL_FROM || process.env.FROM_EMAIL || process.env.SMTP_USER || 'noreply@logdigitizing.ai';
+
+    // Default to the admin's own account email if no recipient is provided.
+    if (!to) {
+        try {
+            to = await new Promise((resolve) => {
+                db.get(`SELECT email FROM users WHERE id = ?`, [req.session.userId], (err, row) => resolve(row && row.email));
+            });
+        } catch (e) { /* ignore */ }
+    }
+    if (!to) return res.status(400).json({ error: 'No recipient address available.' });
+
+    try {
+        const info = await sendEmail({
+            to,
+            subject: 'Log Digitizing - Test Email',
+            text: `This is a test email confirming your SMTP configuration is working.\n\nSent from: ${fromAddress}\nTime: ${new Date().toISOString()}`,
+            html: `<p>This is a test email confirming your SMTP configuration is working.</p><p><strong>Sent from:</strong> ${fromAddress}<br><strong>Time:</strong> ${new Date().toISOString()}</p>`
+        });
+        res.json({ message: `Test email sent to ${to} (and any BCC monitoring address).`, messageId: info.messageId });
+    } catch (e) {
+        console.error('Test email failed:', e);
+        res.status(500).json({ error: `Failed to send: ${e.message}` });
     }
 });
 
