@@ -28,27 +28,33 @@ router.get('/summary', requireAuth, (req, res) => {
 router.post('/create-portal-session', requireAuth, async (req, res) => {
     try {
         const userId = req.session.userId;
-        
-        // Need to get the Stripe Customer ID
-        db.get(`SELECT stripe_customer_id FROM users WHERE id = ?`, [userId], async (err, user) => {
-            if (err || !user) return res.status(500).json({ error: 'User not found' });
-            
-            if (!user.stripe_customer_id || !stripe) {
-                return res.status(400).json({ error: 'No Stripe customer linked to this account or Stripe is not configured.' });
-            }
+        const user = await dbGet(`SELECT stripe_customer_id FROM users WHERE id = ?`, [userId]);
 
-            const portalSession = await stripe.billingPortal.sessions.create({
-                customer: user.stripe_customer_id,
-                return_url: `${req.protocol}://${req.get('host')}/dashboard/billing.html`,
-            });
-            
-            res.json({ url: portalSession.url });
+        if (!user) return res.status(500).json({ error: 'User not found' });
+        if (!user.stripe_customer_id || !stripe) {
+            return res.status(400).json({ error: 'No Stripe customer linked to this account or Stripe is not configured.' });
+        }
+
+        const portalSession = await stripe.billingPortal.sessions.create({
+            customer: user.stripe_customer_id,
+            return_url: `${req.protocol}://${req.get('host')}/dashboard/billing.html`,
         });
+        res.json({ url: portalSession.url });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error('Portal session error:', error);
+        res.status(500).json({ error: error.message || 'Internal Server Error' });
     }
 });
+
+// Promise helpers for sqlite3 callbacks
+function dbGet(sql, params) {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+}
 
 // Create Checkout Session for a Log
 router.post('/checkout/log/:id', requireAuth, async (req, res) => {
@@ -56,62 +62,59 @@ router.post('/checkout/log/:id', requireAuth, async (req, res) => {
         const userId = req.session.userId;
         const logId = req.params.id;
 
-        db.get(`SELECT * FROM logs WHERE id = ? AND user_id = ?`, [logId, userId], async (err, log) => {
-            if (err || !log) return res.status(404).json({ error: 'Log not found' });
-            if (log.status === 'paid' || log.status === 'delivered') return res.status(400).json({ error: 'Log is already paid.' });
-            
-            const amountDue = log.amount_due;
-            if (!amountDue || amountDue <= 0) {
-                return res.status(400).json({ error: 'Amount due is not set for this log.' });
-            }
+        const log = await dbGet(`SELECT * FROM logs WHERE id = ? AND user_id = ?`, [logId, userId]);
+        if (!log) return res.status(404).json({ error: 'Log not found' });
+        if (log.status === 'paid' || log.status === 'delivered') return res.status(400).json({ error: 'Log is already paid.' });
 
-            if (!stripe) {
-                return res.status(500).json({ error: 'Stripe is not configured on the server.' });
-            }
+        const amountDue = log.amount_due;
+        if (!amountDue || amountDue <= 0) {
+            return res.status(400).json({ error: 'Amount due is not set for this log.' });
+        }
 
-            // Get customer ID
-            db.get(`SELECT stripe_customer_id, email FROM users WHERE id = ?`, [userId], async (err, user) => {
-                if (err || !user) {
-                    console.error('Checkout user lookup failed:', err);
-                    return res.status(500).json({ error: 'Failed to load user details for checkout.' });
-                }
-                const sessionConfig = {
-                    payment_method_types: ['card'],
-                    line_items: [
-                        {
-                            price_data: {
-                                currency: 'usd',
-                                product_data: {
-                                    name: `Digitized Log: ${log.title}`,
-                                    description: `${log.footage || 0} feet, ${log.curves || 1} curve(s)`
-                                },
-                                unit_amount: amountDue, // Amount in cents
-                            },
-                            quantity: 1,
+        if (!stripe) {
+            return res.status(500).json({ error: 'Stripe is not configured on the server.' });
+        }
+
+        const user = await dbGet(`SELECT stripe_customer_id, email FROM users WHERE id = ?`, [userId]);
+        if (!user) {
+            return res.status(500).json({ error: 'Failed to load user details for checkout.' });
+        }
+
+        const sessionConfig = {
+            payment_method_types: ['card'],
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: `Digitized Log: ${log.title}`,
+                            description: `${log.footage || 0} feet, ${log.curves || 1} curve(s)`
                         },
-                    ],
-                    mode: 'payment',
-                    success_url: `${req.protocol}://${req.get('host')}/dashboard/logs/${log.id}?session_id={CHECKOUT_SESSION_ID}`,
-                    cancel_url: `${req.protocol}://${req.get('host')}/dashboard/logs/${log.id}`,
-                    metadata: {
-                        logId: log.id.toString(),
-                        userId: userId.toString()
-                    }
-                };
+                        unit_amount: amountDue,
+                    },
+                    quantity: 1,
+                },
+            ],
+            mode: 'payment',
+            success_url: `${req.protocol}://${req.get('host')}/dashboard/logs/${log.id}?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.protocol}://${req.get('host')}/dashboard/logs/${log.id}`,
+            metadata: {
+                logId: log.id.toString(),
+                userId: userId.toString()
+            }
+        };
 
-                if (user && user.stripe_customer_id) {
-                    sessionConfig.customer = user.stripe_customer_id;
-                } else if (user && user.email) {
-                    sessionConfig.customer_email = user.email;
-                }
+        if (user.stripe_customer_id) {
+            sessionConfig.customer = user.stripe_customer_id;
+        } else if (user.email) {
+            sessionConfig.customer_email = user.email;
+        }
 
-                const session = await stripe.checkout.sessions.create(sessionConfig);
-                res.json({ url: session.url });
-            });
-        });
+        const session = await stripe.checkout.sessions.create(sessionConfig);
+        res.json({ url: session.url });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error('Checkout session error:', error);
+        res.status(500).json({ error: error.message || 'Internal Server Error' });
     }
 });
 
