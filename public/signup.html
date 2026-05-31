@@ -40,11 +40,11 @@
     <div class="auth-container">
         <h2 class="text-center">Create an Account</h2>
         <form id="signupForm" class="auth-form">
-            <input type="text" id="name" class="auth-input" placeholder="Full Name" required>
-            <input type="email" id="email" class="auth-input" placeholder="Email Address" required>
+            <input type="text" id="name" class="auth-input" placeholder="Full Name" autocomplete="name" required>
+            <input type="email" id="email" class="auth-input" placeholder="Email Address" autocomplete="email" required>
             <input type="text" id="company" class="auth-input" placeholder="Company Name (optional)">
             <input type="text" id="address" class="auth-input" placeholder="Address (optional)">
-            <input type="password" id="password" class="auth-input" placeholder="Password" required>
+            <input type="password" id="password" class="auth-input" placeholder="Password" autocomplete="new-password" required>
             <div id="errorMsg" class="auth-error"></div>
             <button type="submit" class="auth-btn">Sign Up</button>
         </form>

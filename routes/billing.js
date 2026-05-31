@@ -71,6 +71,10 @@ router.post('/checkout/log/:id', requireAuth, async (req, res) => {
 
             // Get customer ID
             db.get(`SELECT stripe_customer_id, email FROM users WHERE id = ?`, [userId], async (err, user) => {
+                if (err || !user) {
+                    console.error('Checkout user lookup failed:', err);
+                    return res.status(500).json({ error: 'Failed to load user details for checkout.' });
+                }
                 const sessionConfig = {
                     payment_method_types: ['card'],
                     line_items: [
