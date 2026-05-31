@@ -11,6 +11,11 @@
     <link rel="preload" as="image" href="./assets/well-log-digitization-hero.png" />
     <link rel="stylesheet" href="./styles.css" />
     <script>
+      // Redirect logged-in users straight to dashboard
+      fetch('/api/auth/me?t=' + Date.now()).then(res => {
+          if (res.ok) window.location.href = '/dashboard';
+      });
+
       // Automatically show 'Dashboard' in nav if logged in
       document.addEventListener('DOMContentLoaded', () => {
           fetch('/api/auth/me').then(res => {
