@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const db = require('../db');
 const storage = require('../storage');
 const { sendEmail } = require('../email');
+const { sendAdminSMS } = require('../sms');
 const stripe = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_...' ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 const router = express.Router();
 
@@ -172,6 +173,17 @@ router.post('/test-email', requireAdmin, async (req, res) => {
         res.json({ message: `Test email sent to ${to} (and any BCC monitoring address).`, messageId: info.messageId });
     } catch (e) {
         console.error('Test email failed:', e);
+        res.status(500).json({ error: `Failed to send: ${e.message}` });
+    }
+});
+
+// Send a test SMS to verify Twilio configuration (admin only).
+router.post('/test-sms', requireAdmin, async (req, res) => {
+    try {
+        const msg = await sendAdminSMS(`Log Digitizing - Test SMS\nTime: ${new Date().toLocaleString()}`);
+        res.json({ message: 'Test SMS sent successfully.', sid: msg ? msg.sid : null });
+    } catch (e) {
+        console.error('Test SMS failed:', e);
         res.status(500).json({ error: `Failed to send: ${e.message}` });
     }
 });

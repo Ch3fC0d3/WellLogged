@@ -415,6 +415,10 @@
                             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                             Send Test Email
                         </button>
+                        <button id="adminTestSMSBtn" class="btn btn-outline" style="display: flex; gap: 8px; align-items: center;" onclick="sendTestSMS(this)">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a9.87 9.87 0 01-4.688-1.187L3 21l1.187-5.313A9.87 9.87 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"></path></svg>
+                            Send Test Text
+                        </button>
                         <button id="adminSyncStripeBtn" class="btn" style="display: flex; gap: 8px; align-items: center;" onclick="syncStripeData(this)">
                             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             Sync Stripe Data
@@ -1643,6 +1647,26 @@
                     alert(data.message || 'Test email sent.');
                 } else {
                     alert(data.error || 'Failed to send test email.');
+                }
+            } catch (err) {
+                alert('Network error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function sendTestSMS(btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Sending...';
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/admin/test-sms', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message || 'Test SMS sent.');
+                } else {
+                    alert(data.error || 'Failed to send test SMS.');
                 }
             } catch (err) {
                 alert('Network error');
