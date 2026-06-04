@@ -9,6 +9,7 @@ const { sendEmail } = require('../email');
 const { createNotification } = require('../notifications');
 const { calculateAmountDueCents } = require('../pricing');
 const { sendAdminSMS } = require('../sms');
+const { sendPushoverUploadAlert } = require('../pushover');
 const router = express.Router();
 
 const requireAuth = (req, res, next) => {
@@ -116,6 +117,7 @@ router.post('/public', upload.single('file'), async (req, res) => {
             html: `<p>A new project "<strong>${title}</strong>" was just submitted by user ${userId}.</p><p>Log into the <a href="https://logdigitizing.ai/dashboard">admin dashboard</a> to review the files and set pricing.</p>`
         }).catch(err => console.error('Failed to email admin:', err));
         sendAdminSMS(`New project submitted: "${title}" (user #${userId}). Review at logdigitizing.ai/admin`).catch(err => console.error('Failed to SMS admin:', err));
+        sendPushoverUploadAlert({ clientName: name || 'Unknown', filename: req.file ? req.file.originalname : 'N/A', emergency: true }).catch(err => console.error('Failed to pushover admin:', err));
 
         // Notify User (if opted in)
         db.get('SELECT email, name, email_notifications FROM users WHERE id = ?', [userId], (err, userRow) => {
@@ -246,6 +248,7 @@ router.post('/', requireAuth, upload.single('file'), async (req, res) => {
                 relatedId: newLogId
             });
             sendAdminSMS(`New project submitted: "${title}" (user #${req.session.userId}). Review at logdigitizing.ai/admin`).catch(err => console.error('Failed to SMS admin:', err));
+            sendPushoverUploadAlert({ clientName: req.session.email || 'Unknown', filename: req.file ? req.file.originalname : 'N/A', emergency: true }).catch(err => console.error('Failed to pushover admin:', err));
 
             // Send Emails
             const adminEmail = process.env.MAIL_FROM || 'admin@tiflas.com';

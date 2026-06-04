@@ -419,6 +419,10 @@
                             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a9.87 9.87 0 01-4.688-1.187L3 21l1.187-5.313A9.87 9.87 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"></path></svg>
                             Send Test Text
                         </button>
+                        <button id="adminTestPushoverBtn" class="btn btn-outline" style="display: flex; gap: 8px; align-items: center;" onclick="sendTestPushover(this)">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                            Send Test Pushover
+                        </button>
                         <button id="adminSyncStripeBtn" class="btn" style="display: flex; gap: 8px; align-items: center;" onclick="syncStripeData(this)">
                             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             Sync Stripe Data
@@ -1667,6 +1671,26 @@
                     alert(data.message || 'Test SMS sent.');
                 } else {
                     alert(data.error || 'Failed to send test SMS.');
+                }
+            } catch (err) {
+                alert('Network error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function sendTestPushover(btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Sending...';
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/admin/test-pushover', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message || 'Pushover test sent.');
+                } else {
+                    alert(data.error || 'Failed to send Pushover test.');
                 }
             } catch (err) {
                 alert('Network error');

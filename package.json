@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",
+    "axios": "^1.17.0",
     "bcrypt": "^6.0.0",
     "connect-sqlite3": "^0.9.16",
     "cors": "^2.8.6",

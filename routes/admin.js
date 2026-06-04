@@ -8,6 +8,7 @@ const db = require('../db');
 const storage = require('../storage');
 const { sendEmail } = require('../email');
 const { sendAdminSMS } = require('../sms');
+const { sendPushoverUploadAlert } = require('../pushover');
 const stripe = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_...' ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 const router = express.Router();
 
@@ -184,6 +185,21 @@ router.post('/test-sms', requireAdmin, async (req, res) => {
         res.json({ message: 'Test SMS sent successfully.', sid: msg ? msg.sid : null });
     } catch (e) {
         console.error('Test SMS failed:', e);
+        res.status(500).json({ error: `Failed to send: ${e.message}` });
+    }
+});
+
+// Send a test Pushover alert (admin only).
+router.post('/test-pushover', requireAdmin, async (req, res) => {
+    try {
+        const result = await sendPushoverUploadAlert({ clientName: 'Test Client', filename: 'test_well_log.tif', emergency: true });
+        if (result) {
+            res.json({ message: 'Pushover test alert sent.', receipt: result.receipt || null });
+        } else {
+            res.status(500).json({ error: 'Pushover alert failed. Check server logs for details.' });
+        }
+    } catch (e) {
+        console.error('Test Pushover failed:', e);
         res.status(500).json({ error: `Failed to send: ${e.message}` });
     }
 });
