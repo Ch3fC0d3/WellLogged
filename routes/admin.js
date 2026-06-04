@@ -21,18 +21,18 @@ const requireAdmin = (req, res, next) => {
         return res.status(403).json({ error: 'Forbidden: Admins only' });
     }
     // Verify admin role directly from DB to avoid stale session cache
-    db.get('SELECT role FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+    db.get('SELECT role, email FROM users WHERE id = ?', [req.session.userId], (err, user) => {
         if (err) {
             console.log(`[requireAdmin] Rejected: DB error: ${err}`);
-            return res.status(403).json({ error: 'Forbidden: Admins only' });
+            return res.status(403).json({ error: 'Forbidden: Admins only (DB error)' });
         }
         if (!user) {
-            console.log(`[requireAdmin] Rejected: User not found in DB`);
-            return res.status(403).json({ error: 'Forbidden: Admins only' });
+            console.log(`[requireAdmin] Rejected: User ${req.session.userId} not found in DB`);
+            return res.status(403).json({ error: 'Forbidden: Admins only (user not found)' });
         }
         if (user.role !== 'admin') {
-            console.log(`[requireAdmin] Rejected: User role is ${user.role}, not admin`);
-            return res.status(403).json({ error: 'Forbidden: Admins only' });
+            console.log(`[requireAdmin] Rejected: User ${user.email} role is "${user.role}", not admin`);
+            return res.status(403).json({ error: `Forbidden: Admins only (your role is "${user.role}")` });
         }
         console.log(`[requireAdmin] Accepted: User ${user.email} is admin`);
         next();

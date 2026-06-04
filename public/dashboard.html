@@ -1643,6 +1643,7 @@
                 const body = to.trim() ? { to: to.trim() } : {};
                 const res = await fetch('/api/admin/test-email', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
@@ -1665,7 +1666,7 @@
             btn.innerHTML = 'Sending...';
             btn.disabled = true;
             try {
-                const res = await fetch('/api/admin/test-sms', { method: 'POST' });
+                const res = await fetch('/api/admin/test-sms', { method: 'POST', credentials: 'include' });
                 const data = await res.json();
                 if (res.ok) {
                     alert(data.message || 'Test SMS sent.');
@@ -1685,7 +1686,7 @@
             btn.innerHTML = 'Sending...';
             btn.disabled = true;
             try {
-                const res = await fetch('/api/admin/test-pushover', { method: 'POST' });
+                const res = await fetch('/api/admin/test-pushover', { method: 'POST', credentials: 'include' });
                 const data = await res.json();
                 if (res.ok) {
                     alert(data.message || 'Pushover test sent.');
