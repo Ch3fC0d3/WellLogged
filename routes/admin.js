@@ -196,7 +196,14 @@ router.post('/test-pushover', requireAdmin, async (req, res) => {
         if (result) {
             res.json({ message: 'Pushover test alert sent.', receipt: result.receipt || null });
         } else {
-            res.status(500).json({ error: 'Pushover alert failed. Check server logs for details.' });
+            const missing = [];
+            if (!process.env.PUSHOVER_API_TOKEN) missing.push('PUSHOVER_API_TOKEN');
+            if (!process.env.PUSHOVER_USER_KEY) missing.push('PUSHOVER_USER_KEY');
+            if (missing.length > 0) {
+                res.status(500).json({ error: `Pushover not configured. Missing Railway variables: ${missing.join(', ')}` });
+            } else {
+                res.status(500).json({ error: 'Pushover API call failed. Check server logs for details.' });
+            }
         }
     } catch (e) {
         console.error('Test Pushover failed:', e);
