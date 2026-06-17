@@ -259,3 +259,79 @@ window.LASViewer = {
         }
     }
 };
+
+// Admin dashboard compatibility patch: allow the existing Output File
+// Upload/Replace button to select and submit multiple files.
+(function enableAdminMultiOutputUpload() {
+    function patchOutputInputs() {
+        document.querySelectorAll('input[type="file"][onchange^="uploadOutputFile"]').forEach((input) => {
+            input.setAttribute('multiple', 'multiple');
+        });
+    }
+
+    async function uploadMultipleOutputFiles(logId, input) {
+        const files = Array.from((input && input.files) || []);
+        if (!files.length) return;
+
+        const statusEl = document.getElementById(`adminUploadStatus_${logId}`);
+        if (statusEl) {
+            statusEl.textContent = files.length === 1 ? 'Uploading...' : `Uploading ${files.length} files...`;
+            statusEl.style.color = 'var(--muted)';
+        }
+
+        const formData = new FormData();
+        files.forEach((file) => formData.append('file', file));
+
+        try {
+            const res = await fetch(`/api/admin/logs/${logId}/output`, {
+                method: 'POST',
+                body: formData
+            });
+            if (res.ok) {
+                let message = 'Done!';
+                try {
+                    const data = await res.json();
+                    message = data.message || message;
+                } catch (e) {}
+                if (statusEl) {
+                    statusEl.textContent = message;
+                    statusEl.style.color = 'var(--teal)';
+                }
+                if (input) input.value = '';
+                if (typeof window.loadAdminData === 'function') {
+                    setTimeout(() => window.loadAdminData(), 1000);
+                }
+            } else {
+                let error = 'Failed';
+                try {
+                    const data = await res.json();
+                    error = data.error || error;
+                } catch (e) {}
+                if (statusEl) {
+                    statusEl.textContent = error;
+                    statusEl.style.color = '#ef4444';
+                }
+            }
+        } catch (err) {
+            if (statusEl) {
+                statusEl.textContent = 'Network error';
+                statusEl.style.color = '#ef4444';
+            }
+        }
+    }
+
+    function installUploadOverride() {
+        window.uploadOutputFile = uploadMultipleOutputFiles;
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', patchOutputInputs);
+    } else {
+        patchOutputInputs();
+    }
+    const timer = setInterval(() => {
+        patchOutputInputs();
+        installUploadOverride();
+    }, 500);
+    window.addEventListener('beforeunload', () => clearInterval(timer));
+})();
